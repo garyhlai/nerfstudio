@@ -14,6 +14,7 @@
 
 
 """This file contains the configuration for external methods which are not included in this repository."""
+
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -39,10 +40,7 @@ class ExternalMethod:
     """Specifies a pip package if the method can be installed by running `pip install <pip_package>`."""
 
 
-external_methods = []
-
-# Instruct-NeRF2NeRF
-external_methods.append(
+external_methods = [
     ExternalMethod(
         """[bold yellow]Instruct-NeRF2NeRF[/bold yellow]
 For more information visit: https://docs.nerf.studio/nerfology/methods/in2n.html
@@ -56,7 +54,7 @@ To enable Instruct-NeRF2NeRF, you must install it first by running:
         ],
         pip_package="git+https://github.com/ayaanzhaque/instruct-nerf2nerf",
     )
-)
+]
 
 # K-Planes
 external_methods.append(

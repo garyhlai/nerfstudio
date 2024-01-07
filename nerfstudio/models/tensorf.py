@@ -267,13 +267,14 @@ class TensoRFModel(Model):
         )
 
     def get_param_groups(self) -> Dict[str, List[Parameter]]:
-        param_groups = {}
+        param_groups = {
+            "fields": (
+                list(self.field.mlp_head.parameters())
+                + list(self.field.B.parameters())
+                + list(self.field.field_output_rgb.parameters())
+            )
+        }
 
-        param_groups["fields"] = (
-            list(self.field.mlp_head.parameters())
-            + list(self.field.B.parameters())
-            + list(self.field.field_output_rgb.parameters())
-        )
         param_groups["encodings"] = list(self.field.color_encoding.parameters()) + list(
             self.field.density_encoding.parameters()
         )
@@ -314,8 +315,7 @@ class TensoRFModel(Model):
         rgb = torch.where(accumulation < 0, colors.WHITE.to(rgb.device), rgb)
         accumulation = torch.clamp(accumulation, min=0)
 
-        outputs = {"rgb": rgb, "accumulation": accumulation, "depth": depth}
-        return outputs
+        return {"rgb": rgb, "accumulation": accumulation, "depth": depth}
 
     def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict[str, torch.Tensor]:
         # Scaling metrics by coefficients to create the losses.
@@ -332,9 +332,10 @@ class TensoRFModel(Model):
         loss_dict = {"rgb_loss": rgb_loss}
 
         if self.config.regularization == "l1":
-            l1_parameters = []
-            for parameter in self.field.density_encoding.parameters():
-                l1_parameters.append(parameter.view(-1))
+            l1_parameters = [
+                parameter.view(-1)
+                for parameter in self.field.density_encoding.parameters()
+            ]
             loss_dict["l1_reg"] = torch.abs(torch.cat(l1_parameters)).mean()
         elif self.config.regularization == "tv":
             density_plane_coef = self.field.density_encoding.plane_coef
@@ -344,9 +345,7 @@ class TensoRFModel(Model):
             ), "TV reg only supported for TensoRF encoding types with plane_coef attribute"
             loss_dict["tv_reg_density"] = tv_loss(density_plane_coef)
             loss_dict["tv_reg_color"] = tv_loss(color_plane_coef)
-        elif self.config.regularization == "none":
-            pass
-        else:
+        elif self.config.regularization != "none":
             raise ValueError(f"Regularization {self.config.regularization} not supported")
 
         self.camera_optimizer.get_loss_dict(loss_dict)

@@ -379,8 +379,7 @@ def columnwise_squared_l2_distance(
     # Use the fact that ||x - y||^2 == ||x||^2 + ||y||^2 - 2 x^T y.
     sq_norm_x = torch.sum(x**2, 0)
     sq_norm_y = torch.sum(y**2, 0)
-    sq_dist = sq_norm_x[:, None] + sq_norm_y[None, :] - 2 * x.T @ y
-    return sq_dist
+    return sq_norm_x[:, None] + sq_norm_y[None, :] - 2 * x.T @ y
 
 
 def _compute_tesselation_weights(v: int) -> Tensor:
@@ -397,11 +396,9 @@ def _compute_tesselation_weights(v: int) -> Tensor:
         raise ValueError(f"v {v} must be >= 1")
     int_weights = []
     for i in range(v + 1):
-        for j in range(v + 1 - i):
-            int_weights.append((i, j, v - (i + j)))
+        int_weights.extend((i, j, v - (i + j)) for j in range(v + 1 - i))
     int_weights = torch.FloatTensor(int_weights)
-    weights = int_weights / v  # Barycentric weights.
-    return weights
+    return int_weights / v
 
 
 def _tesselate_geodesic(
@@ -516,5 +513,4 @@ def generate_polyhedron_basis(
         match = columnwise_squared_l2_distance(verts.T, -verts.T) < eps
         verts = verts[torch.any(torch.triu(match), 1), :]
 
-    basis = verts.flip(-1)
-    return basis
+    return verts.flip(-1)

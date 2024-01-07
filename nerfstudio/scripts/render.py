@@ -111,7 +111,7 @@ def _render_trajectory_video(
         render_nearest_camera: Whether to render the nearest training camera to the rendered camera.
         check_occlusions: If true, checks line-of-sight occlusions when computing camera distance and rejects cameras not visible to each other
     """
-    CONSOLE.print("[bold green]Creating trajectory " + output_format)
+    CONSOLE.print(f"[bold green]Creating trajectory {output_format}")
     cameras.rescale_output_resolution(rendered_resolution_scaling_factor)
     cameras = cameras.to(pipeline.device)
     fps = len(cameras) / seconds
@@ -257,7 +257,7 @@ def _render_trajectory_video(
                     # maintain the resolution of the img to calculate the width from the height
                     width = int(img.shape[1] * (height / img.shape[0]))
                     resized_image = torch.nn.functional.interpolate(
-                        img.permute(2, 0, 1)[None], size=(int(height), int(width))
+                        img.permute(2, 0, 1)[None], size=(int(height), width)
                     )[0].permute(1, 2, 0)
                     resized_image = (
                         colormaps.apply_colormap(

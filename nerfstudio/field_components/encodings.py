@@ -128,22 +128,22 @@ class NeRFEncoding(Encoding):
         self.include_input = include_input
 
         self.tcnn_encoding = None
-        if implementation == "tcnn" and not TCNN_EXISTS:
-            print_tcnn_speed_warning("NeRFEncoding")
-        elif implementation == "tcnn":
-            assert min_freq_exp == 0, "tcnn only supports min_freq_exp = 0"
-            assert max_freq_exp == num_frequencies - 1, "tcnn only supports max_freq_exp = num_frequencies - 1"
-            encoding_config = self.get_tcnn_encoding_config(num_frequencies=self.num_frequencies)
-            self.tcnn_encoding = tcnn.Encoding(
-                n_input_dims=in_dim,
-                encoding_config=encoding_config,
-            )
+        if implementation == "tcnn":
+            if TCNN_EXISTS:
+                assert min_freq_exp == 0, "tcnn only supports min_freq_exp = 0"
+                assert max_freq_exp == num_frequencies - 1, "tcnn only supports max_freq_exp = num_frequencies - 1"
+                encoding_config = self.get_tcnn_encoding_config(num_frequencies=self.num_frequencies)
+                self.tcnn_encoding = tcnn.Encoding(
+                    n_input_dims=in_dim,
+                    encoding_config=encoding_config,
+                )
+            else:
+                print_tcnn_speed_warning("NeRFEncoding")
 
     @classmethod
     def get_tcnn_encoding_config(cls, num_frequencies) -> dict:
         """Get the encoding configuration for tcnn if implemented"""
-        encoding_config = {"otype": "Frequency", "n_frequencies": num_frequencies}
-        return encoding_config
+        return {"otype": "Frequency", "n_frequencies": num_frequencies}
 
     def get_out_dim(self) -> int:
         if self.in_dim is None:
@@ -173,14 +173,15 @@ class NeRFEncoding(Encoding):
         scaled_inputs = scaled_inputs.view(*scaled_inputs.shape[:-2], -1)  # [..., "input_dim" * "num_scales"]
 
         if covs is None:
-            encoded_inputs = torch.sin(torch.cat([scaled_inputs, scaled_inputs + torch.pi / 2.0], dim=-1))
-        else:
-            input_var = torch.diagonal(covs, dim1=-2, dim2=-1)[..., :, None] * freqs[None, :] ** 2
-            input_var = input_var.reshape((*input_var.shape[:-2], -1))
-            encoded_inputs = expected_sin(
-                torch.cat([scaled_inputs, scaled_inputs + torch.pi / 2.0], dim=-1), torch.cat(2 * [input_var], dim=-1)
+            return torch.sin(
+                torch.cat([scaled_inputs, scaled_inputs + torch.pi / 2.0], dim=-1)
             )
-        return encoded_inputs
+        input_var = torch.diagonal(covs, dim1=-2, dim2=-1)[..., :, None] * freqs[None, :] ** 2
+        input_var = input_var.reshape((*input_var.shape[:-2], -1))
+        return expected_sin(
+            torch.cat([scaled_inputs, scaled_inputs + torch.pi / 2.0], dim=-1),
+            torch.cat(2 * [input_var], dim=-1),
+        )
 
     def forward(
         self, in_tensor: Float[Tensor, "*bs input_dim"], covs: Optional[Float[Tensor, "*bs input_dim input_dim"]] = None
@@ -279,7 +280,7 @@ class RFFEncoding(FFEncoding):
     """
 
     def __init__(self, in_dim: int, num_frequencies: int, scale: float, include_input: bool = False) -> None:
-        if not scale > 0:
+        if scale <= 0:
             raise ValueError("RFF encoding scale should be greater than zero")
 
         b_matrix = torch.normal(mean=0, std=scale, size=(in_dim, num_frequencies))
@@ -414,7 +415,7 @@ class HashEncoding(Encoding):
         # assert min_val >= 0.0
         # assert max_val <= 1.0
 
-        in_tensor = in_tensor * torch.tensor([1, 2654435761, 805459861]).to(in_tensor.device)
+        in_tensor *= torch.tensor([1, 2654435761, 805459861]).to(in_tensor.device)
         x = torch.bitwise_xor(in_tensor[..., 0], in_tensor[..., 1])
         x = torch.bitwise_xor(x, in_tensor[..., 2])
         x %= self.hash_table_size
@@ -746,11 +747,7 @@ class KPlanesEncoding(Encoding):
                 grid, coords, align_corners=True, padding_mode="border"
             )  # [1, output_dim, 1, flattened_bs]
             interp = interp.view(self.num_components, -1).T  # [flattened_bs, output_dim]
-            if self.reduce == "product":
-                output = output * interp
-            else:
-                output = output + interp
-
+            output = output * interp if self.reduce == "product" else output + interp
         # Typing: output gets converted to a tensor after the first iteration of the loop
         assert isinstance(output, Tensor)
         return output.reshape(*original_shape[:-1], self.num_components)
@@ -772,23 +769,23 @@ class SHEncoding(Encoding):
         self.levels = levels
 
         self.tcnn_encoding = None
-        if implementation == "tcnn" and not TCNN_EXISTS:
-            print_tcnn_speed_warning("SHEncoding")
-        elif implementation == "tcnn":
-            encoding_config = self.get_tcnn_encoding_config(levels=self.levels)
-            self.tcnn_encoding = tcnn.Encoding(
-                n_input_dims=3,
-                encoding_config=encoding_config,
-            )
+        if implementation == "tcnn":
+            if TCNN_EXISTS:
+                encoding_config = self.get_tcnn_encoding_config(levels=self.levels)
+                self.tcnn_encoding = tcnn.Encoding(
+                    n_input_dims=3,
+                    encoding_config=encoding_config,
+                )
+            else:
+                print_tcnn_speed_warning("SHEncoding")
 
     @classmethod
     def get_tcnn_encoding_config(cls, levels) -> dict:
         """Get the encoding configuration for tcnn if implemented"""
-        encoding_config = {
+        return {
             "otype": "SphericalHarmonics",
             "degree": levels,
         }
-        return encoding_config
 
     def get_out_dim(self) -> int:
         return self.levels**2

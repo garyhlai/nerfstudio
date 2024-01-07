@@ -351,8 +351,7 @@ class GenerfactoModel(Model):
         return callbacks
 
     def get_param_groups(self) -> Dict[str, List[Parameter]]:
-        param_groups = {}
-        param_groups["proposal_networks"] = list(self.proposal_networks.parameters())
+        param_groups = {"proposal_networks": list(self.proposal_networks.parameters())}
         param_groups["fields"] = list(self.field.parameters())
         return param_groups
 

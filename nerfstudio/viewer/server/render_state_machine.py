@@ -95,10 +95,7 @@ class RenderStateMachine(threading.Thread):
             #  1. we are in low_moving state
             #  2. the current next_action is move, static, or rerender
             return
-        elif self.next_action == "rerender":
-            # never overwrite rerenders
-            pass
-        else:
+        elif self.next_action != "rerender":
             #  minimal use case, just set the next action
             self.next_action = action
 
@@ -131,12 +128,8 @@ class RenderStateMachine(threading.Thread):
             # TODO jake-austin: Make this check whether the model inherits from a camera based model or a ray based model
             # TODO Zhuoyang: First made some dummy judgements, need to be fixed later
             isGaussianSplattingModel = isinstance(self.viewer.get_model(), GaussianSplattingModel)
-            if isGaussianSplattingModel:
-                # TODO fix me before ship
-                camera_ray_bundle = camera.generate_rays(camera_indices=0, aabb_box=self.viewer.get_model().render_aabb)
-            else:
-                camera_ray_bundle = camera.generate_rays(camera_indices=0, aabb_box=self.viewer.get_model().render_aabb)
-
+            # TODO fix me before ship
+            camera_ray_bundle = camera.generate_rays(camera_indices=0, aabb_box=self.viewer.get_model().render_aabb)
             with TimeWriter(None, None, write=False) as vis_t:
                 self.viewer.get_model().eval()
                 step = self.viewer.step
@@ -161,10 +154,7 @@ class RenderStateMachine(threading.Thread):
                         else:
                             outputs = self.viewer.get_model().get_outputs_for_camera_ray_bundle(camera_ray_bundle)
                 self.viewer.get_model().train()
-        if True:
-            num_rays = (camera.height * camera.width).item()
-        else:
-            num_rays = len(camera_ray_bundle)
+        num_rays = (camera.height * camera.width).item()
         render_time = vis_t.duration
         if writer.is_initialized():
             writer.put_time(

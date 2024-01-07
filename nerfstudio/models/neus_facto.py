@@ -187,7 +187,7 @@ class NeuSFactoModel(NeuSModel):
         weights_list.append(weights)
         ray_samples_list.append(ray_samples)
 
-        samples_and_field_outputs = {
+        return {
             "ray_samples": ray_samples,
             "field_outputs": field_outputs,
             "weights": weights,
@@ -195,7 +195,6 @@ class NeuSFactoModel(NeuSModel):
             "weights_list": weights_list,
             "ray_samples_list": ray_samples_list,
         }
-        return samples_and_field_outputs
 
     def get_loss_dict(
         self, outputs: Dict[str, Any], batch: Dict[str, Any], metrics_dict: Optional[Dict[str, Any]] = None

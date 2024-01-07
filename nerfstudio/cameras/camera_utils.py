@@ -200,9 +200,7 @@ def get_interpolated_k(
     """
     Ks: List[Float[Tensor, "3 3"]] = []
     ts = np.linspace(0, 1, steps)
-    for t in ts:
-        new_k = k_a * (1.0 - t) + k_b * t
-        Ks.append(new_k)
+    Ks.extend(k_a * (1.0 - t) + k_b * t for t in ts)
     return Ks
 
 
@@ -236,8 +234,8 @@ def get_ordered_poses_and_k(
         idx = torch.argmin(distances)
         ordered_poses = torch.cat((ordered_poses, torch.unsqueeze(poses[idx], 0)), dim=0)
         ordered_ks = torch.cat((ordered_ks, torch.unsqueeze(Ks[idx], 0)), dim=0)
-        poses = torch.cat((poses[0:idx], poses[idx + 1 :]), dim=0)
-        Ks = torch.cat((Ks[0:idx], Ks[idx + 1 :]), dim=0)
+        poses = torch.cat((poses[:idx], poses[idx + 1 :]), dim=0)
+        Ks = torch.cat((Ks[:idx], Ks[idx + 1 :]), dim=0)
 
     return ordered_poses, ordered_ks
 
@@ -313,8 +311,7 @@ def viewmatrix(lookat: torch.Tensor, up: torch.Tensor, pos: torch.Tensor) -> Flo
     vec1_avg = normalize(up)
     vec0 = normalize(torch.cross(vec1_avg, vec2))
     vec1 = normalize(torch.cross(vec2, vec0))
-    m = torch.stack([vec0, vec1, vec2, pos], 1)
-    return m
+    return torch.stack([vec0, vec1, vec2, pos], 1)
 
 
 def get_distortion_params(
@@ -455,8 +452,8 @@ def rotation_matrix(a: Float[Tensor, "3"], b: Float[Tensor, "3"]) -> Float[Tenso
     Returns:
         The rotation matrix.
     """
-    a = a / torch.linalg.norm(a)
-    b = b / torch.linalg.norm(b)
+    a /= torch.linalg.norm(a)
+    b /= torch.linalg.norm(b)
     v = torch.cross(a, b)
     c = torch.dot(a, b)
     # If vectors are exactly opposite, we add a little noise to one of them
@@ -659,7 +656,7 @@ def fisheye624_project(xyz, params):
 
     assert xyz.ndim == 3
     assert params.ndim == 2
-    assert params.shape[-1] == 16 or params.shape[-1] == 15, "This model allows fx != fy"
+    assert params.shape[-1] in [16, 15], "This model allows fx != fy"
     eps = 1e-9
     B, N = xyz.shape[0], xyz.shape[1]
 
@@ -705,9 +702,7 @@ def fisheye624_project(xyz, params):
     else:
         fx_fy = params[:, 0:2].reshape(B, 1, 2)
         cx_cy = params[:, 2:4].reshape(B, 1, 2)
-    result = uv_dist * fx_fy + cx_cy
-
-    return result
+    return uv_dist * fx_fy + cx_cy
 
 
 # Core implementation of fisheye 624 unprojection. More details are documented here:
@@ -737,7 +732,7 @@ def fisheye624_unproject_helper(uv, params, max_iters: int = 5):
 
     assert uv.ndim == 3, "Expected batched input shaped BxNx3"
     assert params.ndim == 2
-    assert params.shape[-1] == 16 or params.shape[-1] == 15, "This model allows fx != fy"
+    assert params.shape[-1] in [16, 15], "This model allows fx != fy"
     eps = 1e-6
     B, N = uv.shape[0], uv.shape[1]
 
@@ -831,8 +826,7 @@ def fisheye624_unproject_helper(uv, params, max_iters: int = 5):
     # Compute the ray direction using theta and xr_yr.
     close_to_zero = torch.logical_and(th.abs() < eps, xr_yr_norm.abs() < eps)
     ray_dir = torch.where(close_to_zero, xr_yr, torch.tan(th) / xr_yr_norm * xr_yr)
-    ray = torch.cat([ray_dir, uv.new_ones(B, N, 1)], dim=2)
-    return ray
+    return torch.cat([ray_dir, uv.new_ones(B, N, 1)], dim=2)
 
 
 # unproject 2D point to 3D with fisheye624 model

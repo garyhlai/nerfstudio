@@ -116,8 +116,7 @@ class InputDataset(Dataset):
         return {}
 
     def __getitem__(self, image_idx: int) -> Dict:
-        data = self.get_data(image_idx)
-        return data
+        return self.get_data(image_idx)
 
     @property
     def image_filenames(self) -> List[Path]:

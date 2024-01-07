@@ -27,9 +27,7 @@ from nerfstudio.utils.rich_utils import CONSOLE
 
 def _find_param(calib_xml: ET.Element, param_name: str):
     param = calib_xml.find(param_name)
-    if param is not None:
-        return float(param.text)  # type: ignore
-    return 0.0
+    return float(param.text) if param is not None else 0.0
 
 
 def metashape_to_json(
@@ -148,17 +146,15 @@ def metashape_to_json(
     assert cameras is not None, "Cameras not found in Metashape xml"
     num_skipped = 0
     for camera in cameras:
-        frame = {}
         camera_label = camera.get("label")
         assert isinstance(camera_label, str)
         if camera_label not in image_filename_map:
             # Labels sometimes have a file extension. Try without the extension.
             # (maybe it's just a '.' in the image name)
             camera_label = camera_label.split(".")[0]  # type: ignore
-            if camera_label not in image_filename_map:
-                continue
-        frame["file_path"] = image_filename_map[camera_label].as_posix()
-
+        if camera_label not in image_filename_map:
+            continue
+        frame = {"file_path": image_filename_map[camera_label].as_posix()}
         sensor_id = camera.get("sensor_id")
         if sensor_id not in sensor_dict:
             # this should only happen when we have a sensor that doesn't have calibration

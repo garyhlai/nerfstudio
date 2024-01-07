@@ -605,7 +605,7 @@ def create_sfm_depth(
             input_image = cv2.imread(str(input_image_path))  # type: ignore
             debug = 0.3 * input_image + 0.7 + overlay
 
-            out_name = out_name + ".debug.jpg"
+            out_name += ".debug.jpg"
             output_path = output_dir / "debug_depth" / out_name
             output_path.parent.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(output_path), debug.astype(np.uint8))  # type: ignore

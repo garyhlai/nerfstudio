@@ -366,26 +366,26 @@ class VanillaPipeline(Pipeline):
         assert isinstance(self.datamanager, (VanillaDataManager, ParallelDataManager, FullImageDatamanager))
         num_images = len(self.datamanager.fixed_indices_eval_dataloader)
         with Progress(
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TimeElapsedColumn(),
-            MofNCompleteColumn(),
-            transient=True,
-        ) as progress:
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TimeElapsedColumn(),
+                MofNCompleteColumn(),
+                transient=True,
+            ) as progress:
             task = progress.add_task("[green]Evaluating all eval images...", total=num_images)
+            fps_str = "fps"
             for camera, batch in self.datamanager.fixed_indices_eval_dataloader:
                 # time this the following line
                 inner_start = time()
                 outputs = self.model.get_outputs_for_camera(camera=camera)
                 height, width = camera.height, camera.width
-                num_rays = height * width
                 metrics_dict, _ = self.model.get_image_metrics_and_images(outputs, batch)
                 if output_path is not None:
                     raise NotImplementedError("Saving images is not implemented yet")
 
                 assert "num_rays_per_sec" not in metrics_dict
+                num_rays = height * width
                 metrics_dict["num_rays_per_sec"] = (num_rays / (time() - inner_start)).item()
-                fps_str = "fps"
                 assert fps_str not in metrics_dict
                 metrics_dict[fps_str] = (metrics_dict["num_rays_per_sec"] / (height * width)).item()
                 metrics_dict_list.append(metrics_dict)
@@ -425,8 +425,7 @@ class VanillaPipeline(Pipeline):
         """Returns the training callbacks from both the Dataloader and the Model."""
         datamanager_callbacks = self.datamanager.get_training_callbacks(training_callback_attributes)
         model_callbacks = self.model.get_training_callbacks(training_callback_attributes)
-        callbacks = datamanager_callbacks + model_callbacks
-        return callbacks
+        return datamanager_callbacks + model_callbacks
 
     def get_param_groups(self) -> Dict[str, List[Parameter]]:
         """Get the param groups for the pipeline.

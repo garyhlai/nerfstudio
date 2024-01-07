@@ -109,9 +109,7 @@ class InstantNGP(DataParser):
                     mask_filenames.append(mask_fname)
         if num_skipped_image_filenames >= 0:
             CONSOLE.print(f"Skipping {num_skipped_image_filenames} files in dataset split {split}.")
-        assert (
-            len(image_filenames) != 0
-        ), """
+        assert image_filenames, """
         No image files found.
         You should check the file_paths in the transforms.json file to make sure they are correct.
         """
@@ -141,7 +139,7 @@ class InstantNGP(DataParser):
             raise ValueError(f"Unknown dataparser split {split}")
         # Choose image_filenames and poses based on split, but after auto orient and scaling the poses.
         image_filenames = [image_filenames[i] for i in indices]
-        mask_filenames = [mask_filenames[i] for i in indices] if len(mask_filenames) > 0 else []
+        mask_filenames = [mask_filenames[i] for i in indices] if mask_filenames else []
 
         idx_tensor = torch.tensor(indices, dtype=torch.long)
         poses = poses[idx_tensor]
@@ -187,16 +185,13 @@ class InstantNGP(DataParser):
             camera_type=camera_type,
         )
 
-        # TODO(ethan): add alpha background color
-        dataparser_outputs = DataparserOutputs(
+        return DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
-            mask_filenames=mask_filenames if len(mask_filenames) > 0 else None,
+            mask_filenames=mask_filenames if mask_filenames else None,
             dataparser_scale=self.config.scene_scale,
         )
-
-        return dataparser_outputs
 
     @classmethod
     def get_focal_lengths(cls, meta: Dict) -> Tuple[float, float]:

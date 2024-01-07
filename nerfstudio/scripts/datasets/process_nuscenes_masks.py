@@ -58,13 +58,13 @@ class ProcessNuScenesMasks:
             dataroot=str(self.data_dir.absolute()),
             verbose=self.verbose,
         )
-        cameras = ["CAM_" + camera for camera in self.cameras]
+        cameras = [f"CAM_{camera}" for camera in self.cameras]
 
         for camera in cameras:
             (self.output_dir / "masks" / camera).mkdir(parents=True, exist_ok=True)
 
         # get samples for scene
-        samples = [samp for samp in nusc.sample]
+        samples = list(nusc.sample)
 
         # sort by timestamp (only to make chronological viz easier)
         samples.sort(key=lambda x: (x["scene_token"], x["timestamp"]))
@@ -136,7 +136,7 @@ class ProcessNuScenesMasks:
                     viz = cv2.resize(viz, (int(1600 * 3 / 3), int(900 * 2 / 3)))
                 elif len(viz) == 3:
                     viz = np.hstack(viz[:3])
-                    viz = cv2.resize(viz, (int(1600 * 3 / 3), int(900 / 3)))
+                    viz = cv2.resize(viz, (int(1600 * 3 / 3), 900 // 3))
                 elif len(viz) == 1:
                     viz = viz[0]
                 else:

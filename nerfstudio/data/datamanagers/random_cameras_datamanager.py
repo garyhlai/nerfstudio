@@ -304,11 +304,9 @@ class RandomCamerasDataManager(DataManager):  # pylint: disable=abstract-method
 
     def get_param_groups(
         self,
-    ) -> Dict[str, List[Parameter]]:  # pylint: disable=no-self-use
+    ) -> Dict[str, List[Parameter]]:    # pylint: disable=no-self-use
         """Get the param groups for the data manager.
         Returns:
             A list of dictionaries containing the data manager's param groups.
         """
-        param_groups = {}
-
-        return param_groups
+        return {}

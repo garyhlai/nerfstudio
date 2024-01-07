@@ -305,14 +305,16 @@ class AccumulationRenderer(nn.Module):
             Outputs of accumulated values.
         """
 
-        if ray_indices is not None and num_rays is not None:
-            # Necessary for packed samples from volumetric ray sampler
-            accumulation = nerfacc.accumulate_along_rays(
-                weights[..., 0], values=None, ray_indices=ray_indices, n_rays=num_rays
+        return (
+            nerfacc.accumulate_along_rays(
+                weights[..., 0],
+                values=None,
+                ray_indices=ray_indices,
+                n_rays=num_rays,
             )
-        else:
-            accumulation = torch.sum(weights, dim=-2)
-        return accumulation
+            if ray_indices is not None and num_rays is not None
+            else torch.sum(weights, dim=-2)
+        )
 
 
 class DepthRenderer(nn.Module):
@@ -358,8 +360,7 @@ class DepthRenderer(nn.Module):
             split = torch.ones((*weights.shape[:-2], 1), device=weights.device) * 0.5  # [..., 1]
             median_index = torch.searchsorted(cumulative_weights, split, side="left")  # [..., 1]
             median_index = torch.clamp(median_index, 0, steps.shape[-2] - 1)  # [..., 1]
-            median_depth = torch.gather(steps[..., 0], dim=-1, index=median_index)  # [..., 1]
-            return median_depth
+            return torch.gather(steps[..., 0], dim=-1, index=median_index)
         if self.method == "expected":
             eps = 1e-10
             steps = (ray_samples.frustums.starts + ray_samples.frustums.ends) / 2
@@ -399,8 +400,7 @@ class UncertaintyRenderer(nn.Module):
         Returns:
             Rendering of uncertainty.
         """
-        uncertainty = torch.sum(weights * betas, dim=-2)
-        return uncertainty
+        return torch.sum(weights * betas, dim=-2)
 
 
 class SemanticRenderer(nn.Module):

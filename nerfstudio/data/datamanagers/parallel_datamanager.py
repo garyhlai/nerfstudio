@@ -120,8 +120,12 @@ class DataProcessor(mp.Process):  # type: ignore
             for idx in indices:
                 res = executor.submit(self.dataset.__getitem__, idx)
                 results.append(res)
-            for res in track(results, description="Loading data batch", transient=False):
-                batch_list.append(res.result())
+            batch_list.extend(
+                res.result()
+                for res in track(
+                    results, description="Loading data batch", transient=False
+                )
+            )
         self.img_data = self.config.collate_fn(batch_list)
 
 
@@ -215,7 +219,7 @@ class ParallelDataManager(DataManager, Generic[TDataset]):
                 dataset=self.train_dataset,
                 pixel_sampler=self.train_pixel_sampler,
             )
-            for i in range(self.config.num_processes)
+            for _ in range(self.config.num_processes)
         ]
         for proc in self.data_procs:
             proc.start()

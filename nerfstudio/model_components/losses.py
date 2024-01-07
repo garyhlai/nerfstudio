@@ -76,9 +76,7 @@ def outer(
     idx_hi = torch.clamp(idx_hi, min=0, max=y1.shape[-1] - 1)
     cy1_lo = torch.take_along_dim(cy1[..., :-1], idx_lo, dim=-1)
     cy1_hi = torch.take_along_dim(cy1[..., 1:], idx_hi, dim=-1)
-    y0_outer = cy1_hi - cy1_lo
-
-    return y0_outer
+    return cy1_hi - cy1_lo
 
 
 def lossfun_outer(
@@ -105,8 +103,7 @@ def ray_samples_to_sdist(ray_samples):
     """Convert ray samples to s space"""
     starts = ray_samples.spacing_starts
     ends = ray_samples.spacing_ends
-    sdist = torch.cat([starts[..., 0], ends[..., -1:, 0]], dim=-1)  # (num_rays, num_samples + 1)
-    return sdist
+    return torch.cat([starts[..., 0], ends[..., -1:, 0]], dim=-1)
 
 
 def interlevel_loss(weights_list, ray_samples_list) -> torch.Tensor:
@@ -149,8 +146,7 @@ def distortion_loss(weights_list, ray_samples_list):
     """From mipnerf360"""
     c = ray_samples_to_sdist(ray_samples_list[-1])
     w = weights_list[-1][..., 0]
-    loss = torch.mean(lossfun_distortion(c, w))
-    return loss
+    return torch.mean(lossfun_distortion(c, w))
 
 
 def nerfstudio_distortion_loss(
@@ -311,7 +307,7 @@ def depth_loss(
         Depth loss scalar.
     """
     if not is_euclidean:
-        termination_depth = termination_depth * directions_norm
+        termination_depth *= directions_norm
     steps = (ray_samples.frustums.starts + ray_samples.frustums.ends) / 2
 
     if depth_loss_type == DepthLossType.DS_NERF:

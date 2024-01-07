@@ -44,8 +44,7 @@ def create_point_pyramid(points: Float[Tensor, "3 height width depth"]) -> List[
     for _ in range(3):
         points = avg_pool_3d(points[None])[0]
         points_pyramid.append(points)
-    points_pyramid = points_pyramid[::-1]
-    return points_pyramid
+    return points_pyramid[::-1]
 
 
 def evaluate_sdf(sdf: Callable[[Tensor], Tensor], points: Float[Tensor, "batch 3"]) -> Float[Tensor, "batch"]:
@@ -60,9 +59,7 @@ def evaluate_sdf(sdf: Callable[[Tensor], Tensor], points: Float[Tensor, "batch 3
     Returns:
         A torch tensor with the SDF values evaluated at the given points.
     """
-    z: List[Tensor] = []
-    for _, pnts in enumerate(torch.split(points, 100000, dim=0)):
-        z.append(sdf(pnts))
+    z: List[Tensor] = [sdf(pnts) for pnts in torch.split(points, 100000, dim=0)]
     return torch.cat(z, dim=0)
 
 
@@ -235,7 +232,10 @@ def generate_mesh_with_multires_marching_cubes(
                     ):
                         continue
 
-                if not (np.min(z) > isosurface_threshold or np.max(z) < isosurface_threshold):
+                if (
+                    np.min(z) <= isosurface_threshold
+                    and np.max(z) >= isosurface_threshold
+                ):
                     z = z.astype(np.float32)
                     verts, faces, normals, _ = measure.marching_cubes(  # type: ignore
                         volume=z.reshape(crop_n, crop_n, crop_n),

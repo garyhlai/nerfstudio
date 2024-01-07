@@ -263,33 +263,44 @@ def generate_planar_projections_from_equirectangular(
     if crop_factor[2] > 0:
         right_bound = 180 - 360 * crop_factor[2]
 
-    if samples_per_im == 8:
-        fov = 120
-        bound_arr = [-45, 0, 45]
-        bound_arr = _crop_bound_arr_vertical(bound_arr, fov, crop_factor)
-        if bound_arr[1] is not None:
-            for i in np.arange(left_bound, right_bound, 90):
-                yaw_pitch_pairs.append((i, bound_arr[1]))
-        if bound_arr[2] is not None:
-            for i in np.arange(left_bound, right_bound, 180):
-                yaw_pitch_pairs.append((i, bound_arr[2]))
-        if bound_arr[0] is not None:
-            for i in np.arange(left_bound, right_bound, 180):
-                yaw_pitch_pairs.append((i, bound_arr[0]))
-    elif samples_per_im == 14:
+    if samples_per_im == 14:
         fov = 110
         bound_arr = [-45, 0, 45]
         bound_arr = _crop_bound_arr_vertical(bound_arr, fov, crop_factor)
         if bound_arr[1] is not None:
-            for i in np.arange(left_bound, right_bound, 60):
-                yaw_pitch_pairs.append((i, bound_arr[1]))
+            yaw_pitch_pairs.extend(
+                (i, bound_arr[1])
+                for i in np.arange(left_bound, right_bound, 60)
+            )
         if bound_arr[2] is not None:
-            for i in np.arange(left_bound, right_bound, 90):
-                yaw_pitch_pairs.append((i, bound_arr[2]))
+            yaw_pitch_pairs.extend(
+                (i, bound_arr[2])
+                for i in np.arange(left_bound, right_bound, 90)
+            )
         if bound_arr[0] is not None:
-            for i in np.arange(left_bound, right_bound, 90):
-                yaw_pitch_pairs.append((i, bound_arr[0]))
-
+            yaw_pitch_pairs.extend(
+                (i, bound_arr[0])
+                for i in np.arange(left_bound, right_bound, 90)
+            )
+    elif samples_per_im == 8:
+        fov = 120
+        bound_arr = [-45, 0, 45]
+        bound_arr = _crop_bound_arr_vertical(bound_arr, fov, crop_factor)
+        if bound_arr[1] is not None:
+            yaw_pitch_pairs.extend(
+                (i, bound_arr[1])
+                for i in np.arange(left_bound, right_bound, 90)
+            )
+        if bound_arr[2] is not None:
+            yaw_pitch_pairs.extend(
+                (i, bound_arr[2])
+                for i in np.arange(left_bound, right_bound, 180)
+            )
+        if bound_arr[0] is not None:
+            yaw_pitch_pairs.extend(
+                (i, bound_arr[0])
+                for i in np.arange(left_bound, right_bound, 180)
+            )
     frame_dir = image_dir
     output_dir = image_dir / "planar_projections"
     output_dir.mkdir(exist_ok=True)
@@ -308,15 +319,12 @@ def generate_planar_projections_from_equirectangular(
                 im = np.array(cv2.imread(os.path.join(frame_dir, i)))
                 im = torch.tensor(im, dtype=torch.float32, device=device)
                 im = torch.permute(im, (2, 0, 1)).unsqueeze(0) / 255.0
-                count = 0
-                for u_deg, v_deg in yaw_pitch_pairs:
+                for count, (u_deg, v_deg) in enumerate(yaw_pitch_pairs):
                     omnicv_pers_tensor = (
                         equirect2persp(im, fov, u_deg, v_deg, planar_image_size[1], planar_image_size[0]) * 255.0
                     )
                     pers_image = omnicv_pers_tensor.squeeze().permute(1, 2, 0).type(torch.uint8).to("cpu").numpy()
                     cv2.imwrite(f"{output_dir}/{i[:-4]}_{count}.jpg", pers_image)
-                    count += 1
-
     return output_dir
 
 

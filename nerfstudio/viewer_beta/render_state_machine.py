@@ -165,11 +165,7 @@ class RenderStateMachine(threading.Thread):
                 self.viewer.get_model().train()
             num_rays = (camera.height * camera.width).item()
             if self.viewer.control_panel.layer_depth:
-                if isinstance(self.viewer.get_model(), GaussianSplattingModel):
-                    # TODO: sending depth at high resolution lags the network a lot, figure out how to do this more efficiently
-                    # outputs["gl_z_buf_depth"] = outputs["depth"]
-                    pass
-                else:
+                if not isinstance(self.viewer.get_model(), GaussianSplattingModel):
                     # convert to z_depth if depth compositing is enabled
                     R = camera.camera_to_worlds[0, 0:3, 0:3].T
                     camera_ray_bundle = camera.generate_rays(camera_indices=0, obb_box=obb)

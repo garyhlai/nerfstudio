@@ -135,7 +135,7 @@ class CameraOptimizer(nn.Module):
             outputs[0][self.non_trainable_camera_indices] = torch.eye(4, device=self.pose_adjustment.device)[:3, :4]
 
         # Return: identity if no transforms are needed, otherwise multiply transforms together.
-        if len(outputs) == 0:
+        if not outputs:
             # Note that using repeat() instead of tile() here would result in unnecessary copies.
             return torch.eye(4, device=self.device)[None, :3, :4].tile(indices.shape[0], 1, 1)
         return functools.reduce(pose_utils.multiply, outputs)
@@ -179,7 +179,7 @@ class CameraOptimizer(nn.Module):
         """Get camera optimizer parameters"""
         camera_opt_params = list(self.parameters())
         if self.config.mode != "off":
-            assert len(camera_opt_params) > 0
+            assert camera_opt_params
             param_groups["camera_opt"] = camera_opt_params
         else:
-            assert len(camera_opt_params) == 0
+            assert not camera_opt_params

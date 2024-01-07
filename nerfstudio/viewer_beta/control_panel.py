@@ -233,8 +233,6 @@ class ControlPanel:
         self._reset_camera.on_click(self._reset_camera_cb)
 
     def _train_speed_cb(self) -> None:
-        pass
-
         """Callback for when the train speed is changed"""
         if self._train_speed.value == "Fast":
             self._train_util.value = 0.95
@@ -352,8 +350,11 @@ class ControlPanel:
         """Returns the current crop obb setting"""
         rxyz = self._crop_rot.value
         R = torch.tensor(vtf.SO3.from_rpy_radians(rxyz[0], rxyz[1], rxyz[2]).as_matrix())
-        obb = OrientedBox(R, torch.tensor(self._crop_center.value), torch.tensor(self._crop_scale.value))
-        return obb
+        return OrientedBox(
+            R,
+            torch.tensor(self._crop_center.value),
+            torch.tensor(self._crop_scale.value),
+        )
 
     @property
     def background_color(self) -> Tuple[int, int, int]:

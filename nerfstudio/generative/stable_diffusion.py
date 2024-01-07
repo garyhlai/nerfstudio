@@ -165,9 +165,7 @@ class StableDiffusion(nn.Module):
         grad = torch.nan_to_num(grad)
 
         target = (latents - grad).detach()
-        loss = 0.5 * F.mse_loss(latents, target, reduction="sum") / latents.shape[0]
-
-        return loss
+        return 0.5 * F.mse_loss(latents, target, reduction="sum") / latents.shape[0]
 
     def produce_latents(
         self,
@@ -227,7 +225,7 @@ class StableDiffusion(nn.Module):
             Images
         """
 
-        latents = 1 / CONST_SCALE * latents
+        latents *= 1 / CONST_SCALE
 
         with torch.no_grad():
             imgs = self.auto_encoder.decode(latents).sample
@@ -246,9 +244,7 @@ class StableDiffusion(nn.Module):
         imgs = 2 * imgs - 1
 
         posterior = self.auto_encoder.encode(imgs).latent_dist
-        latents = posterior.sample() * CONST_SCALE
-
-        return latents
+        return posterior.sample() * CONST_SCALE
 
     def prompt_to_img(
         self,

@@ -77,7 +77,6 @@ class TimedPoses:
 def get_camera_calibs(provider: VrsDataProvider) -> Dict[str, AriaCameraCalibration]:
     """Retrieve the per-camera factory calibration from within the VRS."""
 
-    factory_calib = {}
     name = "camera-rgb"
     device_calib = provider.get_device_calibration()
     assert device_calib is not None, "Could not find device calibration"
@@ -88,18 +87,18 @@ def get_camera_calibs(provider: VrsDataProvider) -> Dict[str, AriaCameraCalibrat
     height = sensor_calib.get_image_size()[1].item()
     intrinsics = sensor_calib.projection_params()
 
-    factory_calib[name] = AriaCameraCalibration(
-        fx=intrinsics[0],
-        fy=intrinsics[0],
-        cx=intrinsics[1],
-        cy=intrinsics[2],
-        distortion_params=intrinsics[3:15],
-        width=width,
-        height=height,
-        t_device_camera=sensor_calib.get_transform_device_camera(),
-    )
-
-    return factory_calib
+    return {
+        name: AriaCameraCalibration(
+            fx=intrinsics[0],
+            fy=intrinsics[0],
+            cx=intrinsics[1],
+            cy=intrinsics[2],
+            distortion_params=intrinsics[3:15],
+            width=width,
+            height=height,
+            t_device_camera=sensor_calib.get_transform_device_camera(),
+        )
+    }
 
 
 def read_trajectory_csv_to_dict(file_iterable_csv: str) -> TimedPoses:

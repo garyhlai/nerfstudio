@@ -747,9 +747,7 @@ class NeuSSampler(Sampler):
         next_esti_sdf = mid_sdf + cos_val * dist * 0.5
         prev_cdf = torch.sigmoid(prev_esti_sdf * inv_s)
         next_cdf = torch.sigmoid(next_esti_sdf * inv_s)
-        alpha = (prev_cdf - next_cdf + 1e-5) / (prev_cdf + 1e-5)
-
-        return alpha
+        return (prev_cdf - next_cdf + 1e-5) / (prev_cdf + 1e-5)
 
     @staticmethod
     def merge_ray_samples(ray_bundle: RayBundle, ray_samples_1: RaySamples, ray_samples_2: RaySamples):

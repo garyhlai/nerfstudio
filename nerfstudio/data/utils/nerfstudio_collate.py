@@ -102,7 +102,7 @@ def nerfstudio_collate(batch: Any, extra_mappings: Union[Dict[type, Callable], N
             out = elem.new(storage).resize_(len(batch), *list(elem.size()))
         return torch.stack(batch, 0, out=out)
     elif elem_type.__module__ == "numpy" and elem_type.__name__ != "str_" and elem_type.__name__ != "string_":
-        if elem_type.__name__ == "ndarray" or elem_type.__name__ == "memmap":
+        if elem_type.__name__ in ["ndarray", "memmap"]:
             # array of string classes and object
             if np_str_obj_array_pattern.search(elem.dtype.str) is not None:
                 raise TypeError(NERFSTUDIO_COLLATE_ERR_MSG_FORMAT.format(elem.dtype))
@@ -130,7 +130,7 @@ def nerfstudio_collate(batch: Any, extra_mappings: Union[Dict[type, Callable], N
         # check to make sure that the elements in batch have consistent size
         it = iter(batch)
         elem_size = len(next(it))
-        if not all(len(elem) == elem_size for elem in it):
+        if any(len(elem) != elem_size for elem in it):
             raise RuntimeError("each element in list of batch should be of equal size")
         transposed = list(zip(*batch))  # It may be accessed twice, so we use a list.
 
@@ -138,14 +138,11 @@ def nerfstudio_collate(batch: Any, extra_mappings: Union[Dict[type, Callable], N
             return [
                 nerfstudio_collate(samples, extra_mappings=extra_mappings) for samples in transposed
             ]  # Backwards compatibility.
-        else:
-            try:
-                return elem_type([nerfstudio_collate(samples, extra_mappings=extra_mappings) for samples in transposed])
-            except TypeError:
-                # The sequence type may not support `__init__(iterable)` (e.g., `range`).
-                return [nerfstudio_collate(samples, extra_mappings=extra_mappings) for samples in transposed]
-
-    # NerfStudio types supported below
+        try:
+            return elem_type([nerfstudio_collate(samples, extra_mappings=extra_mappings) for samples in transposed])
+        except TypeError:
+            # The sequence type may not support `__init__(iterable)` (e.g., `range`).
+            return [nerfstudio_collate(samples, extra_mappings=extra_mappings) for samples in transposed]
 
     elif isinstance(elem, Cameras):
         # If a camera, just concatenate along the batch dimension. In the future, this may change to stacking
@@ -156,12 +153,7 @@ def nerfstudio_collate(batch: Any, extra_mappings: Union[Dict[type, Callable], N
             Generalized batching will be supported in the future."
 
         # If no batch dimension exists, then we need to stack everything and create a batch dimension on 0th dim
-        if elem.shape == ():
-            op = torch.stack
-        # If batch dimension exists, then we need to concatenate along the 0th dimension
-        else:
-            op = torch.cat
-
+        op = torch.stack if elem.shape == () else torch.cat
         # Create metadata dictionary
         metadata_keys = batch[0].metadata.keys()
         assert all(

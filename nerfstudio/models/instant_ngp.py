@@ -168,11 +168,9 @@ class NGPModel(Model):
         ]
 
     def get_param_groups(self) -> Dict[str, List[Parameter]]:
-        param_groups = {}
         if self.field is None:
             raise ValueError("populate_fields() must be called before get_param_groups")
-        param_groups["fields"] = list(self.field.parameters())
-        return param_groups
+        return {"fields": list(self.field.parameters())}
 
     def get_outputs(self, ray_bundle: RayBundle):
         assert self.field is not None
@@ -213,19 +211,17 @@ class NGPModel(Model):
         )
         accumulation = self.renderer_accumulation(weights=weights, ray_indices=ray_indices, num_rays=num_rays)
 
-        outputs = {
+        return {
             "rgb": rgb,
             "accumulation": accumulation,
             "depth": depth,
             "num_samples_per_ray": packed_info[:, 1],
         }
-        return outputs
 
     def get_metrics_dict(self, outputs, batch):
         image = batch["image"].to(self.device)
         image = self.renderer_rgb.blend_background(image)
-        metrics_dict = {}
-        metrics_dict["psnr"] = self.psnr(outputs["rgb"], image)
+        metrics_dict = {"psnr": self.psnr(outputs["rgb"], image)}
         metrics_dict["num_samples_per_batch"] = outputs["num_samples_per_ray"].sum()
         return metrics_dict
 
@@ -237,8 +233,7 @@ class NGPModel(Model):
             gt_image=image,
         )
         rgb_loss = self.rgb_loss(image, pred_rgb)
-        loss_dict = {"rgb_loss": rgb_loss}
-        return loss_dict
+        return {"rgb_loss": rgb_loss}
 
     def get_image_metrics_and_images(
         self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
