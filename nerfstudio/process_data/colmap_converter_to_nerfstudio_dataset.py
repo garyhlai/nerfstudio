@@ -195,11 +195,7 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
             assert sfm_tool == "hloc", "refine_pixsfm only works with sfm_tool hloc"
 
         # set the image_dir if didn't copy
-        if self.skip_image_processing:
-            image_dir = self.data
-        else:
-            image_dir = self.image_dir
-
+        image_dir = self.data if self.skip_image_processing else self.image_dir
         if sfm_tool == "colmap":
             colmap_utils.run_colmap(
                 image_dir=image_dir,

@@ -48,8 +48,7 @@ class RayGenerator(nn.Module):
         x = ray_indices[:, 2]  # col indices
         coords = self.image_coords[y, x]
 
-        ray_bundle = self.cameras.generate_rays(
+        return self.cameras.generate_rays(
             camera_indices=c.unsqueeze(-1),
             coords=coords,
         )
-        return ray_bundle

@@ -114,9 +114,9 @@ class FullImageDatamanager(DataManager, Generic[TDataset]):
             self.exclude_batch_keys_from_device.remove("image")
 
         # Some logic to make sure we sample every camera in equal amounts
-        self.train_unseen_cameras = [i for i in range(len(self.train_dataset))]
-        self.eval_unseen_cameras = [i for i in range(len(self.eval_dataset))]
-        assert len(self.train_unseen_cameras) > 0, "No data found in dataset"
+        self.train_unseen_cameras = list(range(len(self.train_dataset)))
+        self.eval_unseen_cameras = list(range(len(self.eval_dataset)))
+        assert self.train_unseen_cameras, "No data found in dataset"
 
         super().__init__()
 
@@ -367,7 +367,7 @@ class FullImageDatamanager(DataManager, Generic[TDataset]):
         image_idx = self.train_unseen_cameras.pop(random.randint(0, len(self.train_unseen_cameras) - 1))
         # Make sure to re-populate the unseen cameras list if we have exhausted it
         if len(self.train_unseen_cameras) == 0:
-            self.train_unseen_cameras = [i for i in range(len(self.train_dataset))]
+            self.train_unseen_cameras = list(range(len(self.train_dataset)))
 
         data = deepcopy(self.cached_train[image_idx])
         data["image"] = data["image"].to(self.device)
@@ -386,7 +386,7 @@ class FullImageDatamanager(DataManager, Generic[TDataset]):
         image_idx = self.eval_unseen_cameras.pop(random.randint(0, len(self.eval_unseen_cameras) - 1))
         # Make sure to re-populate the unseen cameras list if we have exhausted it
         if len(self.eval_unseen_cameras) == 0:
-            self.eval_unseen_cameras = [i for i in range(len(self.eval_dataset))]
+            self.eval_unseen_cameras = list(range(len(self.eval_dataset)))
         data = deepcopy(self.cached_eval[image_idx])
         data["image"] = data["image"].to(self.device)
         assert len(self.eval_dataset.cameras.shape) == 1, "Assumes single batch dimension"
@@ -402,7 +402,7 @@ class FullImageDatamanager(DataManager, Generic[TDataset]):
         image_idx = self.eval_unseen_cameras.pop(random.randint(0, len(self.eval_unseen_cameras) - 1))
         # Make sure to re-populate the unseen cameras list if we have exhausted it
         if len(self.eval_unseen_cameras) == 0:
-            self.eval_unseen_cameras = [i for i in range(len(self.eval_dataset))]
+            self.eval_unseen_cameras = list(range(len(self.eval_dataset)))
         data = deepcopy(self.cached_eval[image_idx])
         data["image"] = data["image"].to(self.device)
         assert len(self.eval_dataset.cameras.shape) == 1, "Assumes single batch dimension"

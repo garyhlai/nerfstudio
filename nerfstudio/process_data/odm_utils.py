@@ -29,20 +29,22 @@ from nerfstudio.process_data.process_data_utils import CAMERA_MODELS
 def rodrigues_vec_to_rotation_mat(rodrigues_vec: np.ndarray) -> np.ndarray:
     theta = np.linalg.norm(rodrigues_vec)
     if theta < sys.float_info.epsilon:
-        rotation_mat = np.eye(3, dtype=float)
-    else:
-        r = rodrigues_vec / theta
-        ident = np.eye(3, dtype=float)
-        r_rT = np.array(
-            [
-                [r[0] * r[0], r[0] * r[1], r[0] * r[2]],
-                [r[1] * r[0], r[1] * r[1], r[1] * r[2]],
-                [r[2] * r[0], r[2] * r[1], r[2] * r[2]],
-            ]
-        )
-        r_cross = np.array([[0, -r[2], r[1]], [r[2], 0, -r[0]], [-r[1], r[0], 0]], dtype=float)
-        rotation_mat = math.cos(theta) * ident + (1 - math.cos(theta)) * r_rT + math.sin(theta) * r_cross
-    return rotation_mat
+        return np.eye(3, dtype=float)
+    r = rodrigues_vec / theta
+    ident = np.eye(3, dtype=float)
+    r_rT = np.array(
+        [
+            [r[0] * r[0], r[0] * r[1], r[0] * r[2]],
+            [r[1] * r[0], r[1] * r[1], r[1] * r[2]],
+            [r[2] * r[0], r[2] * r[1], r[2] * r[2]],
+        ]
+    )
+    r_cross = np.array([[0, -r[2], r[1]], [r[2], 0, -r[0]], [-r[1], r[0], 0]], dtype=float)
+    return (
+        math.cos(theta) * ident
+        + (1 - math.cos(theta)) * r_rT
+        + math.sin(theta) * r_cross
+    )
 
 
 def cameras2nerfds(
@@ -117,14 +119,12 @@ def cameras2nerfds(
     frames = []
     num_skipped = 0
 
-    for fname in shots_dict:
-        transform = shots_dict[fname]
+    for fname, transform in shots_dict.items():
         if fname not in image_filename_map:
             num_skipped += 1
             continue
 
-        frame = {}
-        frame["file_path"] = image_filename_map[fname].as_posix()
+        frame = {"file_path": image_filename_map[fname].as_posix()}
         frame.update(sensor_dict[camera_id])
 
         transform = transform[[2, 0, 1, 3], :]

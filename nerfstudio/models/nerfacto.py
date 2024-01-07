@@ -243,8 +243,7 @@ class NerfactoModel(Model):
         self.step = 0
 
     def get_param_groups(self) -> Dict[str, List[Parameter]]:
-        param_groups = {}
-        param_groups["proposal_networks"] = list(self.proposal_networks.parameters())
+        param_groups = {"proposal_networks": list(self.proposal_networks.parameters())}
         param_groups["fields"] = list(self.field.parameters())
         self.camera_optimizer.get_param_groups(param_groups=param_groups)
         return param_groups
@@ -338,12 +337,10 @@ class NerfactoModel(Model):
         return outputs
 
     def get_metrics_dict(self, outputs, batch):
-        metrics_dict = {}
         gt_rgb = batch["image"].to(self.device)  # RGB or RGBA image
         gt_rgb = self.renderer_rgb.blend_background(gt_rgb)  # Blend if RGBA
         predicted_rgb = outputs["rgb"]
-        metrics_dict["psnr"] = self.psnr(predicted_rgb, gt_rgb)
-
+        metrics_dict = {"psnr": self.psnr(predicted_rgb, gt_rgb)}
         if self.training:
             metrics_dict["distortion"] = distortion_loss(outputs["weights_list"], outputs["ray_samples_list"])
 
@@ -351,7 +348,6 @@ class NerfactoModel(Model):
         return metrics_dict
 
     def get_loss_dict(self, outputs, batch, metrics_dict=None):
-        loss_dict = {}
         image = batch["image"].to(self.device)
         pred_rgb, gt_rgb = self.renderer_rgb.blend_background_for_loss_computation(
             pred_image=outputs["rgb"],
@@ -359,7 +355,7 @@ class NerfactoModel(Model):
             gt_image=image,
         )
 
-        loss_dict["rgb_loss"] = self.rgb_loss(gt_rgb, pred_rgb)
+        loss_dict = {"rgb_loss": self.rgb_loss(gt_rgb, pred_rgb)}
         if self.training:
             loss_dict["interlevel_loss"] = self.config.interlevel_loss_mult * interlevel_loss(
                 outputs["weights_list"], outputs["ray_samples_list"]

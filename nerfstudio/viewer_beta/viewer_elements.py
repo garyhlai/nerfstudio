@@ -163,7 +163,7 @@ class ViewerControl:
             origin = scene_pointer_msg.ray_origin
             direction = scene_pointer_msg.ray_direction
 
-            origin = tuple([x / VISER_NERFSTUDIO_SCALE_RATIO for x in origin])
+            origin = tuple(x / VISER_NERFSTUDIO_SCALE_RATIO for x in origin)
             assert len(origin) == 3
 
             click = ViewerClick(origin, direction)
@@ -316,9 +316,7 @@ class ViewerParameter(ViewerElement[TValue], Generic[TValue]):
     @property
     def value(self) -> TValue:
         """Returns the current value of the viewer element"""
-        if self.gui_handle is None:
-            return self.default_value
-        return self.gui_handle.value
+        return self.default_value if self.gui_handle is None else self.gui_handle.value
 
     @value.setter
     def value(self, value: TValue) -> None:

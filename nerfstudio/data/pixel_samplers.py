@@ -95,17 +95,17 @@ class PixelSampler:
             num_images: number of images to sample over
             mask: mask of possible pixels in an image to sample from.
         """
-        if isinstance(mask, torch.Tensor):
-            nonzero_indices = torch.nonzero(mask[..., 0], as_tuple=False)
-            chosen_indices = random.sample(range(len(nonzero_indices)), k=batch_size)
-            indices = nonzero_indices[chosen_indices]
-        else:
-            indices = (
+        if not isinstance(mask, torch.Tensor):
+            return (
                 torch.rand((batch_size, 3), device=device)
-                * torch.tensor([num_images, image_height, image_width], device=device)
+                * torch.tensor(
+                    [num_images, image_height, image_width], device=device
+                )
             ).long()
 
-        return indices
+        nonzero_indices = torch.nonzero(mask[..., 0], as_tuple=False)
+        chosen_indices = random.sample(range(len(nonzero_indices)), k=batch_size)
+        return nonzero_indices[chosen_indices]
 
     def sample_method_equirectangular(
         self,
@@ -121,21 +121,25 @@ class PixelSampler:
             # sampling weight to the poles of the image than the equators.
             # TODO(kevinddchen): implement the correct mask-sampling method.
 
-            indices = self.sample_method(batch_size, num_images, image_height, image_width, mask=mask, device=device)
-        else:
-            # We sample theta uniformly in [0, 2*pi]
-            # We sample phi in [0, pi] according to the PDF f(phi) = sin(phi) / 2.
-            # This is done by inverse transform sampling.
-            # http://corysimon.github.io/articles/uniformdistn-on-sphere/
-            num_images_rand = torch.rand(batch_size, device=device)
-            phi_rand = torch.acos(1 - 2 * torch.rand(batch_size, device=device)) / torch.pi
-            theta_rand = torch.rand(batch_size, device=device)
-            indices = torch.floor(
-                torch.stack((num_images_rand, phi_rand, theta_rand), dim=-1)
-                * torch.tensor([num_images, image_height, image_width], device=device)
-            ).long()
-
-        return indices
+            return self.sample_method(
+                batch_size,
+                num_images,
+                image_height,
+                image_width,
+                mask=mask,
+                device=device,
+            )
+        # We sample theta uniformly in [0, 2*pi]
+        # We sample phi in [0, pi] according to the PDF f(phi) = sin(phi) / 2.
+        # This is done by inverse transform sampling.
+        # http://corysimon.github.io/articles/uniformdistn-on-sphere/
+        num_images_rand = torch.rand(batch_size, device=device)
+        phi_rand = torch.acos(1 - 2 * torch.rand(batch_size, device=device)) / torch.pi
+        theta_rand = torch.rand(batch_size, device=device)
+        return torch.floor(
+            torch.stack((num_images_rand, phi_rand, theta_rand), dim=-1)
+            * torch.tensor([num_images, image_height, image_width], device=device)
+        ).long()
 
     def sample_method_fisheye(
         self,
@@ -147,25 +151,31 @@ class PixelSampler:
         device: Union[torch.device, str] = "cpu",
     ) -> Int[Tensor, "batch_size 3"]:
         if isinstance(mask, torch.Tensor):
-            indices = self.sample_method(batch_size, num_images, image_height, image_width, mask=mask, device=device)
-        else:
-            rand_samples = torch.rand((batch_size, 3), device=device)
-            # convert random samples tto radius and theta
-            radii = self.config.fisheye_crop_radius * torch.sqrt(rand_samples[:, 1])
-            theta = 2.0 * torch.pi * rand_samples[:, 2]
+            return self.sample_method(
+                batch_size,
+                num_images,
+                image_height,
+                image_width,
+                mask=mask,
+                device=device,
+            )
+        rand_samples = torch.rand((batch_size, 3), device=device)
+        # convert random samples tto radius and theta
+        radii = self.config.fisheye_crop_radius * torch.sqrt(rand_samples[:, 1])
+        theta = 2.0 * torch.pi * rand_samples[:, 2]
 
-            # convert radius and theta to x and y between -radii and radii
-            x = radii * torch.cos(theta)
-            y = radii * torch.sin(theta)
+        # convert radius and theta to x and y between -radii and radii
+        x = radii * torch.cos(theta)
+        y = radii * torch.sin(theta)
 
             # Multiply by the batch size and height/width to get pixel indices.
-            indices = torch.floor(
-                torch.stack([rand_samples[:, 0], y, x], dim=1)
-                * torch.tensor([num_images, image_height // 2, image_width // 2], device=device)
-                + torch.tensor([0, image_height // 2, image_width // 2], device=device)
-            ).long()
-
-        return indices
+        return torch.floor(
+            torch.stack([rand_samples[:, 0], y, x], dim=1)
+            * torch.tensor(
+                [num_images, image_height // 2, image_width // 2], device=device
+            )
+            + torch.tensor([0, image_height // 2, image_width // 2], device=device)
+        ).long()
 
     def collate_image_dataset_batch(self, batch: Dict, num_rays_per_batch: int, keep_full_image: bool = False):
         """
@@ -195,17 +205,16 @@ class PixelSampler:
                 indices = self.sample_method(
                     num_rays_per_batch, num_images, image_height, image_width, mask=batch["mask"], device=device
                 )
+        elif self.config.is_equirectangular:
+            indices = self.sample_method_equirectangular(
+                num_rays_per_batch, num_images, image_height, image_width, device=device
+            )
+        elif self.config.fisheye_crop_radius is not None:
+            indices = self.sample_method_fisheye(
+                num_rays_per_batch, num_images, image_height, image_width, device=device
+            )
         else:
-            if self.config.is_equirectangular:
-                indices = self.sample_method_equirectangular(
-                    num_rays_per_batch, num_images, image_height, image_width, device=device
-                )
-            elif self.config.fisheye_crop_radius is not None:
-                indices = self.sample_method_fisheye(
-                    num_rays_per_batch, num_images, image_height, image_width, device=device
-                )
-            else:
-                indices = self.sample_method(num_rays_per_batch, num_images, image_height, image_width, device=device)
+            indices = self.sample_method(num_rays_per_batch, num_images, image_height, image_width, device=device)
 
         c, y, x = (i.flatten() for i in torch.split(indices, 1, dim=-1))
         c, y, x = c.cpu(), y.cpu(), x.cpu()
@@ -244,8 +253,8 @@ class PixelSampler:
         all_indices = []
         all_images = []
 
+        num_rays_in_batch = num_rays_per_batch // num_images
         if "mask" in batch:
-            num_rays_in_batch = num_rays_per_batch // num_images
             for i in range(num_images):
                 image_height, image_width, _ = batch["image"][i].shape
 
@@ -260,7 +269,6 @@ class PixelSampler:
                 all_images.append(batch["image"][i][indices[:, 1], indices[:, 2]])
 
         else:
-            num_rays_in_batch = num_rays_per_batch // num_images
             for i in range(num_images):
                 image_height, image_width, _ = batch["image"][i].shape
                 if i == num_images - 1:
@@ -356,8 +364,8 @@ class PatchPixelSampler(PixelSampler):
         mask: Optional[Tensor] = None,
         device: Union[torch.device, str] = "cpu",
     ) -> Int[Tensor, "batch_size 3"]:
+        sub_bs = batch_size // (self.config.patch_size**2)
         if isinstance(mask, Tensor):
-            sub_bs = batch_size // (self.config.patch_size**2)
             half_patch_size = int(self.config.patch_size / 2)
             m = erode_mask(mask.permute(0, 3, 1, 2).float(), pixel_radius=half_patch_size)
             nonzero_indices = torch.nonzero(m[:, 0], as_tuple=False).to(device)
@@ -376,10 +384,7 @@ class PatchPixelSampler(PixelSampler):
             indices[:, ..., 1] += yys - half_patch_size
             indices[:, ..., 2] += xxs - half_patch_size
 
-            indices = torch.floor(indices).long()
-            indices = indices.flatten(0, 2)
         else:
-            sub_bs = batch_size // (self.config.patch_size**2)
             indices = torch.rand((sub_bs, 3), device=device) * torch.tensor(
                 [num_images, image_height - self.config.patch_size, image_width - self.config.patch_size],
                 device=device,
@@ -397,9 +402,8 @@ class PatchPixelSampler(PixelSampler):
             indices[:, ..., 1] += yys
             indices[:, ..., 2] += xxs
 
-            indices = torch.floor(indices).long()
-            indices = indices.flatten(0, 2)
-
+        indices = torch.floor(indices).long()
+        indices = indices.flatten(0, 2)
         return indices
 
 

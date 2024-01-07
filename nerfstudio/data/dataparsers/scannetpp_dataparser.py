@@ -108,9 +108,10 @@ class ScanNetpp(DataParser):
             else:
                 i_train.append(idx)
 
-        assert len(mask_filenames) == 0 or (
-            len(mask_filenames) == len(image_filenames)
-        ), """
+        assert len(mask_filenames) in [
+            0,
+            len(image_filenames),
+        ], """
         Different number of image and mask filenames.
         You should check that mask_path is specified for every frame (or zero frames) in transforms.json.
         """
@@ -145,7 +146,7 @@ class ScanNetpp(DataParser):
 
         # Choose image_filenames and poses based on split, but after auto orient and scaling the poses.
         image_filenames = [image_filenames[i] for i in indices]
-        mask_filenames = [mask_filenames[i] for i in indices] if len(mask_filenames) > 0 else []
+        mask_filenames = [mask_filenames[i] for i in indices] if mask_filenames else []
 
         idx_tensor = torch.tensor(indices, dtype=torch.long)
         poses = poses[idx_tensor]
@@ -195,13 +196,12 @@ class ScanNetpp(DataParser):
             camera_type=camera_type,
         )
 
-        dataparser_outputs = DataparserOutputs(
+        return DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
-            mask_filenames=mask_filenames if len(mask_filenames) > 0 else None,
+            mask_filenames=mask_filenames if mask_filenames else None,
             dataparser_scale=scale_factor,
             dataparser_transform=transform_matrix,
             metadata={},
         )
-        return dataparser_outputs

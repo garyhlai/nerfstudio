@@ -137,16 +137,16 @@ class GenerfactoField(Field):
 
         outputs_shape = ray_bundle.directions.shape[:-1]
         directions_flat = self.direction_encoding(directions.view(-1, 3))
-        background_rgb = self.mlp_background_color(directions_flat).view(*outputs_shape, -1).to(directions)
-
-        return background_rgb
+        return (
+            self.mlp_background_color(directions_flat)
+            .view(*outputs_shape, -1)
+            .to(directions)
+        )
 
     def get_outputs(
         self, ray_samples: RaySamples, density_embedding: Optional[Tensor] = None
     ) -> Dict[FieldHeadNames, Tensor]:
         assert density_embedding is not None
-        outputs = {}
-
         directions = get_normalized_directions(ray_samples.frustums.directions)
 
         outputs_shape = ray_samples.frustums.directions.shape[:-1]
@@ -154,6 +154,4 @@ class GenerfactoField(Field):
         h = density_embedding.view(-1, self.geo_feat_dim)
 
         rgb = self.mlp_head(h).view(*outputs_shape, -1).to(directions)
-        outputs.update({FieldHeadNames.RGB: rgb})
-
-        return outputs
+        return {FieldHeadNames.RGB: rgb}

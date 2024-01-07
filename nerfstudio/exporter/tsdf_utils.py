@@ -81,9 +81,7 @@ class TSDF:
     @property
     def truncation(self) -> float:
         """Returns the truncation distance."""
-        # TODO: clean this up
-        truncation = self.voxel_size[0].item() * self.truncation_margin
-        return truncation
+        return self.voxel_size[0].item() * self.truncation_margin
 
     @staticmethod
     def from_aabb(aabb: Float[Tensor, "2 3"], volume_dims: Float[Tensor, "3"]):
@@ -245,6 +243,8 @@ class TSDF:
         tsdf_values = torch.clamp(dist / self.truncation, min=-1.0, max=1.0)  # [batch, 1, N]
         valid_points = (voxel_depth > 0) & (sampled_depth > 0) & (dist > -self.truncation)  # [batch, 1, N]
 
+        new_weights_i = 1.0
+
         # Sequentially update the TSDF...
 
         for i in range(batch_size):
@@ -258,8 +258,6 @@ class TSDF:
             # the new values
             # TODO: let the new weight be configurable
             new_tsdf_values_i = tsdf_values[i][valid_points_i]
-            new_weights_i = 1.0
-
             total_weights = old_weights_i + new_weights_i
 
             self.values[valid_points_i_shape] = (

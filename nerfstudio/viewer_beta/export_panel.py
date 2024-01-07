@@ -42,7 +42,7 @@ def show_command_modal(client: viser.ClientHandle, what: Literal["mesh", "point 
     In the future, we should only show the modal to the client that pushes the
     generation button.
     """
-    with client.add_gui_modal(what.title() + " Export") as modal:
+    with client.add_gui_modal(f"{what.title()} Export") as modal:
         client.add_gui_markdown(
             "\n".join(
                 [

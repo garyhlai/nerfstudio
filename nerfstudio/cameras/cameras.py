@@ -245,11 +245,12 @@ class Cameras(TensorDataclass):
             h_w = h_w.to(torch.int64).to(self.device)
             if h_w.ndim == 0 or h_w.shape[-1] != 1:
                 h_w = h_w.unsqueeze(-1)
-        # assert torch.all(h_w == h_w.view(-1)[0]), "Batched cameras of different h, w will be allowed in the future."
         elif h_w is None:
             h_w = torch.as_tensor((c_x_y * 2)).to(torch.int64).to(self.device)
         else:
-            raise ValueError("Height must be an int, tensor, or None, received: " + str(type(h_w)))
+            raise ValueError(
+                f"Height must be an int, tensor, or None, received: {str(type(h_w))}"
+            )
         return h_w
 
     def _init_get_times(self, times: Union[None, torch.Tensor]) -> Union[None, torch.Tensor]:
@@ -307,13 +308,11 @@ class Cameras(TensorDataclass):
         if index is None:
             image_height = torch.max(self.image_height.view(-1)).item()
             image_width = torch.max(self.image_width.view(-1)).item()
-            image_coords = torch.meshgrid(torch.arange(image_height), torch.arange(image_width), indexing="ij")
-            image_coords = torch.stack(image_coords, dim=-1) + pixel_offset  # stored as (y, x) coordinates
         else:
             image_height = self.image_height[index].item()
             image_width = self.image_width[index].item()
-            image_coords = torch.meshgrid(torch.arange(image_height), torch.arange(image_width), indexing="ij")
-            image_coords = torch.stack(image_coords, dim=-1) + pixel_offset  # stored as (y, x) coordinates
+        image_coords = torch.meshgrid(torch.arange(image_height), torch.arange(image_width), indexing="ij")
+        image_coords = torch.stack(image_coords, dim=-1) + pixel_offset  # stored as (y, x) coordinates
         return image_coords
 
     def generate_rays(
@@ -975,9 +974,9 @@ class Cameras(TensorDataclass):
             scaling_factor = torch.tensor([scaling_factor]).to(self.device).broadcast_to((self.cx.shape))
         elif isinstance(scaling_factor, torch.Tensor) and scaling_factor.shape == self.shape:
             scaling_factor = scaling_factor.unsqueeze(-1)
-        elif isinstance(scaling_factor, torch.Tensor) and scaling_factor.shape == (*self.shape, 1):
-            pass
-        else:
+        elif not isinstance(
+            scaling_factor, torch.Tensor
+        ) or scaling_factor.shape != (*self.shape, 1):
             raise ValueError(
                 f"Scaling factor must be a float, int, or a tensor of shape {self.shape} or {(*self.shape, 1)}."
             )

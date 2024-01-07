@@ -66,7 +66,7 @@ def get_camera(
         fx = intrinsics_matrix[0, 0]
         fy = intrinsics_matrix[1, 1]
 
-    camera = Cameras(
+    return Cameras(
         fx=fx,
         fy=fy,
         cx=pp_w,
@@ -75,7 +75,6 @@ def get_camera(
         camera_to_worlds=camera_state.c2w.to(torch.float32)[None, ...],
         times=torch.tensor([0.0], dtype=torch.float32),
     )
-    return camera
 
 
 def update_render_aabb(

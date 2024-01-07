@@ -70,7 +70,7 @@ def apply_colormap(
     if image.shape[-1] == 1 and torch.is_floating_point(image):
         output = image
         if colormap_options.normalize:
-            output = output - torch.min(output)
+            output -= torch.min(output)
             output = output / (torch.max(output) + eps)
         output = (
             output * (colormap_options.colormap_max - colormap_options.colormap_min) + colormap_options.colormap_min

@@ -43,10 +43,7 @@ def get_chunks(
     else:
         assert False, "Either `num_chunks` or `size_of_chunk` must be set"
 
-    chunks = []
-    for i in range(0, len(lst), size):
-        chunks.append(lst[i : i + size])
-    return chunks
+    return [lst[i : i + size] for i in range(0, len(lst), size)]
 
 
 def three_js_perspective_camera_focal_length(fov: float, image_height: int):
@@ -60,8 +57,7 @@ def three_js_perspective_camera_focal_length(fov: float, image_height: int):
         print("Warning: fov is None, using default value")
         return 50
     pp_h = image_height / 2.0
-    focal_length = pp_h / np.tan(fov * (np.pi / 180.0) / 2.0)
-    return focal_length
+    return pp_h / np.tan(fov * (np.pi / 180.0) / 2.0)
 
 
 def get_intrinsics_matrix_and_camera_to_world_h(

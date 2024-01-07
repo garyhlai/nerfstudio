@@ -181,9 +181,7 @@ class DeepFloyd(nn.Module):
         grad = torch.nan_to_num(grad)
 
         target = (image - grad).detach()
-        loss = 0.5 * F.mse_loss(image, target, reduction="sum") / image.shape[0]
-
-        return loss
+        return 0.5 * F.mse_loss(image, target, reduction="sum") / image.shape[0]
 
     def prompt_to_image(
         self,
@@ -215,9 +213,7 @@ class DeepFloyd(nn.Module):
             prompt_embeds=prompt_embeds, negative_prompt_embeds=negative_embeds, generator=generator
         )
         assert isinstance(model_output, IFOutputOrig)
-        output_image = model_output.images[0]
-
-        return output_image
+        return model_output.images[0]
 
 
 def generate_image(

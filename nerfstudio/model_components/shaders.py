@@ -73,5 +73,5 @@ class NormalsShader(nn.Module):
         """
         normals = (normals + 1) / 2
         if weights is not None:
-            normals = normals * weights
+            normals *= weights
         return normals

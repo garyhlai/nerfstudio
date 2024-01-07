@@ -52,8 +52,7 @@ def downscale(img, scale: int) -> np.ndarray:
     if height % scale > 0 or width % scale > 0:
         raise ValueError(f"Image shape ({height},{width}) must be divisible by the" f" scale ({scale}).")
     out_height, out_width = height // scale, width // scale
-    resized = cv2.resize(img, (out_width, out_height), cv2.INTER_AREA)  # type: ignore
-    return resized
+    return cv2.resize(img, (out_width, out_height), cv2.INTER_AREA)
 
 
 def upscale(img, scale: int) -> np.ndarray:
@@ -70,8 +69,7 @@ def upscale(img, scale: int) -> np.ndarray:
         return img
     height, width = img.shape[:2]
     out_height, out_width = height * scale, width * scale
-    resized = cv2.resize(img, (out_width, out_height), cv2.INTER_AREA)  # type: ignore
-    return resized
+    return cv2.resize(img, (out_width, out_height), cv2.INTER_AREA)
 
 
 def rescale(img, scale_factor: float, interpolation: int = cv2.INTER_AREA) -> np.ndarray:
@@ -85,7 +83,7 @@ def rescale(img, scale_factor: float, interpolation: int = cv2.INTER_AREA) -> np
     Returns:
         New image
     """
-    scale_factor = float(scale_factor)
+    scale_factor = scale_factor
     if scale_factor <= 0.0:
         raise ValueError("scale_factor must be a non-negative number.")
     if scale_factor == 1.0:
@@ -173,11 +171,11 @@ def _rescale_depth(depth_raw: np.ndarray, cam: Dict) -> np.ndarray:
     viewdirs /= np.linalg.norm(viewdirs, axis=-1, keepdims=True)
     viewdirs = viewdirs.reshape((*batch_shape, 3))
     cosa = viewdirs @ (cam["camera_to_worlds"][:, 2])
-    if depth_raw.ndim == cosa.ndim:
-        depth = depth_raw[..., None] / cosa[..., None]
-    else:
-        depth = depth_raw / cosa[..., None]
-    return depth
+    return (
+        depth_raw[..., None] / cosa[..., None]
+        if depth_raw.ndim == cosa.ndim
+        else depth_raw / cosa[..., None]
+    )
 
 
 @dataclass
@@ -252,13 +250,14 @@ class Dycheck(DataParser):
                 [[-self.config.scene_box_bound] * 3, [self.config.scene_box_bound] * 3], dtype=torch.float32
             )
         )
-        cam_dict = {}
-        for k in cams[0].keys():
-            cam_dict[k] = torch.stack([torch.as_tensor(c[k]) for c in cams], dim=0)
+        cam_dict = {
+            k: torch.stack([torch.as_tensor(c[k]) for c in cams], dim=0)
+            for k in cams[0].keys()
+        }
         cameras = Cameras(camera_type=CameraType.PERSPECTIVE, **cam_dict)
 
         scale = self._scale * self.config.scale_factor
-        dataparser_outputs = DataparserOutputs(
+        return DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
             alpha_color=alpha_color_tensor,
@@ -271,8 +270,6 @@ class Dycheck(DataParser):
                 "far": self._far * scale,
             },
         )
-
-        return dataparser_outputs
 
     def process_frames(self, frame_names: List[str], time_ids: np.ndarray) -> Tuple[List, List, List]:
         """Read cameras and filenames from the name list.

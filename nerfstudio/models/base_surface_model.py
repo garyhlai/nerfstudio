@@ -152,7 +152,7 @@ class SurfaceModel(Model):
         # renderers
         background_color = (
             get_color(self.config.background_color)
-            if self.config.background_color in set(["white", "black"])
+            if self.config.background_color in {"white", "black"}
             else self.config.background_color
         )
         self.renderer_rgb = RGBRenderer(background_color=background_color)
@@ -171,8 +171,7 @@ class SurfaceModel(Model):
         self.lpips = LearnedPerceptualImagePatchSimilarity()
 
     def get_param_groups(self) -> Dict[str, List[Parameter]]:
-        param_groups = {}
-        param_groups["fields"] = list(self.field.parameters())
+        param_groups = {"fields": list(self.field.parameters())}
         param_groups["field_background"] = (
             [self.field_background]
             if isinstance(self.field_background, Parameter)
@@ -268,7 +267,7 @@ class SurfaceModel(Model):
 
         if self.training:
             grad_points = field_outputs[FieldHeadNames.GRADIENT]
-            outputs.update({"eik_grad": grad_points})
+            outputs["eik_grad"] = grad_points
             outputs.update(samples_and_field_outputs)
 
         if "weights_list" in samples_and_field_outputs:
@@ -291,14 +290,13 @@ class SurfaceModel(Model):
             batch: ground truth batch corresponding to outputs
             metrics_dict: dictionary of metrics, some of which we can use for loss
         """
-        loss_dict = {}
         image = batch["image"].to(self.device)
         pred_image, image = self.renderer_rgb.blend_background_for_loss_computation(
             pred_image=outputs["rgb"],
             pred_accumulation=outputs["accumulation"],
             gt_image=image,
         )
-        loss_dict["rgb_loss"] = self.rgb_loss(image, pred_image)
+        loss_dict = {"rgb_loss": self.rgb_loss(image, pred_image)}
         if self.training:
             # eikonal loss
             grad_theta = outputs["eik_grad"]
@@ -340,11 +338,9 @@ class SurfaceModel(Model):
             outputs: the output to compute loss dict to
             batch: ground truth batch corresponding to outputs
         """
-        metrics_dict = {}
         image = batch["image"].to(self.device)
         image = self.renderer_rgb.blend_background(image)
-        metrics_dict["psnr"] = self.psnr(outputs["rgb"], image)
-        return metrics_dict
+        return {"psnr": self.psnr(outputs["rgb"], image)}
 
     def get_image_metrics_and_images(
         self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]

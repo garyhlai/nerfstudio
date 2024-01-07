@@ -92,13 +92,15 @@ class TrainingCallback:
         Args:
             step: current iteration step
         """
-        if self.update_every_num_iters is not None:
-            if step % self.update_every_num_iters == 0:
-                self.func(*self.args, **self.kwargs, step=step)
-        elif self.iters is not None:
-            if step in self.iters:
-                self.func(*self.args, **self.kwargs, step=step)
-        else:
+        if (
+            self.update_every_num_iters is not None
+            and step % self.update_every_num_iters == 0
+            or self.update_every_num_iters is None
+            and self.iters is not None
+            and step in self.iters
+            or self.update_every_num_iters is None
+            and self.iters is None
+        ):
             self.func(*self.args, **self.kwargs, step=step)
 
     def run_callback_at_location(self, step: int, location: TrainingCallbackLocation) -> None:

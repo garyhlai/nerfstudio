@@ -199,9 +199,12 @@ class Model(nn.Module):
                     continue
                 # move the chunk outputs from the model device back to the device of the inputs.
                 outputs_lists[output_name].append(output.to(input_device))
-        outputs = {}
-        for output_name, outputs_list in outputs_lists.items():
-            outputs[output_name] = torch.cat(outputs_list).view(image_height, image_width, -1)  # type: ignore
+        outputs = {
+            output_name: torch.cat(outputs_list).view(
+                image_height, image_width, -1
+            )
+            for output_name, outputs_list in outputs_lists.items()
+        }
         return outputs
 
     def get_rgba_image(self, outputs: Dict[str, torch.Tensor], output_name: str = "rgb") -> torch.Tensor:

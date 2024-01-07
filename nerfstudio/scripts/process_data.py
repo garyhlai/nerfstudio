@@ -64,8 +64,6 @@ class ProcessRecord3D(BaseConverterToNerfstudioDataset):
         image_dir = self.output_dir / "images"
         image_dir.mkdir(parents=True, exist_ok=True)
 
-        summary_log = []
-
         record3d_image_dir = self.data / "rgb"
 
         if not record3d_image_dir.exists():
@@ -93,8 +91,11 @@ class ProcessRecord3D(BaseConverterToNerfstudioDataset):
         )
         num_frames = len(copied_image_paths)
 
-        copied_image_paths = [Path("images/" + copied_image_path.name) for copied_image_path in copied_image_paths]
-        summary_log.append(f"Used {num_frames} images out of {num_images} total")
+        copied_image_paths = [
+            Path(f"images/{copied_image_path.name}")
+            for copied_image_path in copied_image_paths
+        ]
+        summary_log = [f"Used {num_frames} images out of {num_images} total"]
         if self.max_dataset_size > 0:
             summary_log.append(
                 "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
@@ -269,15 +270,19 @@ class ProcessMetashape(BaseConverterToNerfstudioDataset, _NoDefaultProcessMetash
         )
         num_frames = len(copied_image_paths)
 
-        copied_image_paths = [Path("images/" + copied_image_path.name) for copied_image_path in copied_image_paths]
+        copied_image_paths = [
+            Path(f"images/{copied_image_path.name}")
+            for copied_image_path in copied_image_paths
+        ]
         original_names = [image_path.stem for image_path in image_filenames]
         image_filename_map = dict(zip(original_names, copied_image_paths))
 
         if self.max_dataset_size > 0 and num_frames != num_orig_images:
-            summary_log.append(f"Started with {num_frames} images out of {num_orig_images} total")
-            summary_log.append(
-                "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
-                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
+            summary_log.extend(
+                (
+                    f"Started with {num_frames} images out of {num_orig_images} total",
+                    f"To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to larger than the current value ({self.max_dataset_size}), or -1 to use all images.",
+                )
             )
         else:
             summary_log.append(f"Started with {num_frames} images")
@@ -356,15 +361,19 @@ class ProcessRealityCapture(BaseConverterToNerfstudioDataset, _NoDefaultProcessR
         )
         num_frames = len(copied_image_paths)
 
-        copied_image_paths = [Path("images/" + copied_image_path.name) for copied_image_path in copied_image_paths]
+        copied_image_paths = [
+            Path(f"images/{copied_image_path.name}")
+            for copied_image_path in copied_image_paths
+        ]
         original_names = [image_path.stem for image_path in image_filenames]
         image_filename_map = dict(zip(original_names, copied_image_paths))
 
         if self.max_dataset_size > 0 and num_frames != num_orig_images:
-            summary_log.append(f"Started with {num_frames} images out of {num_orig_images} total")
-            summary_log.append(
-                "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
-                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
+            summary_log.extend(
+                (
+                    f"Started with {num_frames} images out of {num_orig_images} total",
+                    f"To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to larger than the current value ({self.max_dataset_size}), or -1 to use all images.",
+                )
             )
         else:
             summary_log.append(f"Started with {num_frames} images")
@@ -414,9 +423,6 @@ class ProcessODM(BaseConverterToNerfstudioDataset):
 
         if not shots_file.exists:
             raise ValueError(f"shots file {shots_file} doesn't exist")
-        if not shots_file.exists:
-            raise ValueError(f"cameras file {cameras_file} doesn't exist")
-
         if not orig_images_dir.exists:
             raise ValueError(f"Images dir {orig_images_dir} doesn't exist")
 
@@ -441,15 +447,19 @@ class ProcessODM(BaseConverterToNerfstudioDataset):
         )
         num_frames = len(copied_image_paths)
 
-        copied_image_paths = [Path("images/" + copied_image_path.name) for copied_image_path in copied_image_paths]
+        copied_image_paths = [
+            Path(f"images/{copied_image_path.name}")
+            for copied_image_path in copied_image_paths
+        ]
         original_names = [image_path.stem for image_path in image_filenames]
         image_filename_map = dict(zip(original_names, copied_image_paths))
 
         if self.max_dataset_size > 0 and num_frames != num_orig_images:
-            summary_log.append(f"Started with {num_frames} images out of {num_orig_images} total")
-            summary_log.append(
-                "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
-                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
+            summary_log.extend(
+                (
+                    f"Started with {num_frames} images out of {num_orig_images} total",
+                    f"To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to larger than the current value ({self.max_dataset_size}), or -1 to use all images.",
+                )
             )
         else:
             summary_log.append(f"Started with {num_frames} images")
@@ -521,7 +531,7 @@ def entrypoint():
     try:
         tyro.cli(Commands).main()
     except RuntimeError as e:
-        CONSOLE.log("[bold red]" + e.args[0])
+        CONSOLE.log(f"[bold red]{e.args[0]}")
 
 
 if __name__ == "__main__":

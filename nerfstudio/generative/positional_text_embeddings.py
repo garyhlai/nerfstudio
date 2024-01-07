@@ -91,14 +91,12 @@ class PositionalTextEmbeddings:
         if self.positional_prompting == "discrete":
             if vertical_angle < 40:
                 text_embedding = self.top_embed
-            elif 315 < horizontal_angle or horizontal_angle <= 45:
+            elif horizontal_angle > 315 or horizontal_angle <= 45:
                 text_embedding = self.front_embed
-            elif 45 < horizontal_angle <= 135:
+            elif 45 < horizontal_angle <= 135 or not 135 < horizontal_angle <= 225:
                 text_embedding = self.side_embed
-            elif 135 < horizontal_angle <= 225:
+            else:
                 text_embedding = self.back_embed
-            else:  # horizontal_angle > 225 and horizontal_angle <= 315:
-                text_embedding = self.side_embed
         elif self.positional_prompting == "interpolated":
             horiz = horizontal_angle.detach().numpy()[0]
             vert = max(vertical_angle.detach().numpy()[0], 0)

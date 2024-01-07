@@ -104,11 +104,10 @@ class Nerfstudio(DataParser):
         cy_fixed = "cy" in meta
         height_fixed = "h" in meta
         width_fixed = "w" in meta
-        distort_fixed = False
-        for distort_key in ["k1", "k2", "k3", "p1", "p2", "distortion_params"]:
-            if distort_key in meta:
-                distort_fixed = True
-                break
+        distort_fixed = any(
+            distort_key in meta
+            for distort_key in ["k1", "k2", "k3", "p1", "p2", "distortion_params"]
+        )
         fisheye_crop_radius = meta.get("fisheye_crop_radius", None)
         fx = []
         fy = []
@@ -179,15 +178,17 @@ class Nerfstudio(DataParser):
                 depth_fname = self._get_fname(depth_filepath, data_dir, downsample_folder_prefix="depths_")
                 depth_filenames.append(depth_fname)
 
-        assert len(mask_filenames) == 0 or (
-            len(mask_filenames) == len(image_filenames)
-        ), """
+        assert len(mask_filenames) in [
+            0,
+            len(image_filenames),
+        ], """
         Different number of image and mask filenames.
         You should check that mask_path is specified for every frame (or zero frames) in transforms.json.
         """
-        assert len(depth_filenames) == 0 or (
-            len(depth_filenames) == len(image_filenames)
-        ), """
+        assert len(depth_filenames) in [
+            0,
+            len(image_filenames),
+        ], """
         Different number of image and depth filenames.
         You should check that depth_file_path is specified for every frame (or zero frames) in transforms.json.
         """
@@ -195,9 +196,11 @@ class Nerfstudio(DataParser):
         has_split_files_spec = any(f"{split}_filenames" in meta for split in ("train", "val", "test"))
         if f"{split}_filenames" in meta:
             # Validate split first
-            split_filenames = set(self._get_fname(Path(x), data_dir) for x in meta[f"{split}_filenames"])
-            unmatched_filenames = split_filenames.difference(image_filenames)
-            if unmatched_filenames:
+            split_filenames = {
+                self._get_fname(Path(x), data_dir)
+                for x in meta[f"{split}_filenames"]
+            }
+            if unmatched_filenames := split_filenames.difference(image_filenames):
                 raise RuntimeError(f"Some filenames for split {split} were not found: {unmatched_filenames}.")
 
             indices = [i for i, path in enumerate(image_filenames) if path in split_filenames]
@@ -251,8 +254,10 @@ class Nerfstudio(DataParser):
 
         # Choose image_filenames and poses based on split, but after auto orient and scaling the poses.
         image_filenames = [image_filenames[i] for i in indices]
-        mask_filenames = [mask_filenames[i] for i in indices] if len(mask_filenames) > 0 else []
-        depth_filenames = [depth_filenames[i] for i in indices] if len(depth_filenames) > 0 else []
+        mask_filenames = [mask_filenames[i] for i in indices] if mask_filenames else []
+        depth_filenames = (
+            [depth_filenames[i] for i in indices] if depth_filenames else []
+        )
 
         idx_tensor = torch.tensor(indices, dtype=torch.long)
         poses = poses[idx_tensor]
@@ -325,20 +330,19 @@ class Nerfstudio(DataParser):
             ply_file_path = data_dir / meta["ply_file_path"]
             metadata.update(self._load_3D_points(ply_file_path, transform_matrix, scale_factor))
 
-        dataparser_outputs = DataparserOutputs(
+        return DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
-            mask_filenames=mask_filenames if len(mask_filenames) > 0 else None,
+            mask_filenames=mask_filenames if mask_filenames else None,
             dataparser_scale=scale_factor,
             dataparser_transform=transform_matrix,
             metadata={
-                "depth_filenames": depth_filenames if len(depth_filenames) > 0 else None,
+                "depth_filenames": depth_filenames if depth_filenames else None,
                 "depth_unit_scale_factor": self.config.depth_unit_scale_factor,
                 **metadata,
             },
         )
-        return dataparser_outputs
 
     def _load_3D_points(self, ply_file_path: Path, transform_matrix: torch.Tensor, scale_factor: float):
         pcd = o3d.io.read_point_cloud(str(ply_file_path))
@@ -357,11 +361,10 @@ class Nerfstudio(DataParser):
         points3D *= scale_factor
         points3D_rgb = torch.from_numpy((np.asarray(pcd.colors) * 255).astype(np.uint8))
 
-        out = {
+        return {
             "points3D_xyz": points3D,
             "points3D_rgb": points3D_rgb,
         }
-        return out
 
     def _get_fname(self, filepath: Path, data_dir: Path, downsample_folder_prefix="images_") -> Path:
         """Get the filename of the image file.

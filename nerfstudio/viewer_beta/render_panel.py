@@ -867,7 +867,7 @@ def populate_render_tab(
         preexisting_camera_filenames = [p.name for p in preexisting_camera_paths]
 
         with event.client.add_gui_modal("Load Path") as modal:
-            if len(preexisting_camera_filenames) == 0:
+            if not preexisting_camera_filenames:
                 event.client.add_gui_markdown("No existing paths found")
             else:
                 event.client.add_gui_markdown("Select existing camera path:")

@@ -115,14 +115,13 @@ class ColmapDataParser(DataParser):
         else:
             raise ValueError(f"Could not find cameras.txt or cameras.bin in {recon_dir}")
 
-        cameras = {}
         frames = []
         camera_model = None
 
-        # Parse cameras
-        for cam_id, cam_data in cam_id_to_camera.items():
-            cameras[cam_id] = parse_colmap_camera_params(cam_data)
-
+        cameras = {
+            cam_id: parse_colmap_camera_params(cam_data)
+            for cam_id, cam_data in cam_id_to_camera.items()
+        }
         # Parse frames
         for im_id, im_data in im_id_to_image.items():
             # NB: COLMAP uses Eigen / scalar-first quaternions
@@ -159,14 +158,15 @@ class ColmapDataParser(DataParser):
             else:
                 camera_model = frame["camera_model"]
 
-        out = {}
-        out["frames"] = frames
         applied_transform = np.eye(4)[:3, :]
         applied_transform = applied_transform[np.array([1, 0, 2]), :]
         applied_transform[2, :] *= -1
-        out["applied_transform"] = applied_transform.tolist()
-        out["camera_model"] = camera_model
-        assert len(frames) > 0, "No images found in the colmap model"
+        out = {
+            "frames": frames,
+            "applied_transform": applied_transform.tolist(),
+            "camera_model": camera_model,
+        }
+        assert frames, "No images found in the colmap model"
         return out
 
     def _get_image_indices(self, image_filenames, split):
@@ -180,9 +180,10 @@ class ColmapDataParser(DataParser):
             with (self.config.data / f"{split}_list.txt").open("r", encoding="utf8") as f:
                 filenames = f.read().splitlines()
             # Validate split first
-            split_filenames = set(self.config.data / self.config.images_path / x for x in filenames)
-            unmatched_filenames = split_filenames.difference(image_filenames)
-            if unmatched_filenames:
+            split_filenames = {
+                self.config.data / self.config.images_path / x for x in filenames
+            }
+            if unmatched_filenames := split_filenames.difference(image_filenames):
                 raise RuntimeError(
                     f"Some filenames for split {split} were not found: {set(map(str, unmatched_filenames))}."
                 )
@@ -257,15 +258,17 @@ class ColmapDataParser(DataParser):
             if "depth_path" in frame:
                 depth_filenames.append(Path(frame["depth_path"]))
 
-        assert len(mask_filenames) == 0 or (
-            len(mask_filenames) == len(image_filenames)
-        ), """
+        assert len(mask_filenames) in [
+            0,
+            len(image_filenames),
+        ], """
         Different number of image and mask filenames.
         You should check that mask_path is specified for every frame (or zero frames) in transforms.json.
         """
-        assert len(depth_filenames) == 0 or (
-            len(depth_filenames) == len(image_filenames)
-        ), """
+        assert len(depth_filenames) in [
+            0,
+            len(image_filenames),
+        ], """
         Different number of image and depth filenames.
         You should check that depth_file_path is specified for every frame (or zero frames) in transforms.json.
         """
@@ -342,20 +345,19 @@ class ColmapDataParser(DataParser):
             # Load 3D points
             metadata.update(self._load_3D_points(colmap_path, transform_matrix, scale_factor))
 
-        dataparser_outputs = DataparserOutputs(
+        return DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
             scene_box=scene_box,
-            mask_filenames=mask_filenames if len(mask_filenames) > 0 else None,
+            mask_filenames=mask_filenames if mask_filenames else None,
             dataparser_scale=scale_factor,
             dataparser_transform=transform_matrix,
             metadata={
-                "depth_filenames": depth_filenames if len(depth_filenames) > 0 else None,
+                "depth_filenames": depth_filenames if depth_filenames else None,
                 "depth_unit_scale_factor": self.config.depth_unit_scale_factor,
                 **metadata,
             },
         )
-        return dataparser_outputs
 
     def _load_3D_points(self, colmap_path: Path, transform_matrix: torch.Tensor, scale_factor: float):
         if (colmap_path / "points3D.bin").exists():
@@ -452,7 +454,7 @@ class ColmapDataParser(DataParser):
         def get_fname(parent: Path, filepath: Path) -> Path:
             """Returns transformed file name when downscale factor is applied"""
             rel_part = filepath.relative_to(parent)
-            base_part = parent.parent / (str(parent.name) + f"_{self._downscale_factor}")
+            base_part = parent.parent / f"{str(parent.name)}_{self._downscale_factor}"
             return base_part / rel_part
 
         filepath = next(iter(image_filenames))
@@ -487,7 +489,7 @@ class ColmapDataParser(DataParser):
                         self._downscale_factor,
                         nearest_neighbor=False,
                     )
-                    if len(mask_filenames) > 0:
+                    if mask_filenames:
                         assert self.config.masks_path is not None
                         self._downscale_images(
                             mask_filenames,
@@ -495,7 +497,7 @@ class ColmapDataParser(DataParser):
                             self._downscale_factor,
                             nearest_neighbor=True,
                         )
-                    if len(depth_filenames) > 0:
+                    if depth_filenames:
                         assert self.config.depths_path is not None
                         self._downscale_images(
                             depth_filenames,
@@ -509,10 +511,10 @@ class ColmapDataParser(DataParser):
         # Return transformed filenames
         if self._downscale_factor > 1:
             image_filenames = [get_fname(self.config.data / self.config.images_path, fp) for fp in image_filenames]
-            if len(mask_filenames) > 0:
+            if mask_filenames:
                 assert self.config.masks_path is not None
                 mask_filenames = [get_fname(self.config.data / self.config.masks_path, fp) for fp in mask_filenames]
-            if len(depth_filenames) > 0:
+            if depth_filenames:
                 assert self.config.depths_path is not None
                 depth_filenames = [get_fname(self.config.data / self.config.depths_path, fp) for fp in depth_filenames]
         assert isinstance(self._downscale_factor, int)

@@ -87,18 +87,18 @@ class ExperimentConfig(InstantiateConfig):
 
     def is_viewer_beta_enabled(self) -> bool:
         """Checks if a viewer beta is enabled."""
-        return "viewer_beta" == self.vis
+        return self.vis == "viewer_beta"
 
     def is_wandb_enabled(self) -> bool:
         """Checks if wandb is enabled."""
-        return ("wandb" == self.vis) | ("viewer+wandb" == self.vis)
+        return (self.vis == "wandb") | (self.vis == "viewer+wandb")
 
     def is_tensorboard_enabled(self) -> bool:
         """Checks if tensorboard is enabled."""
-        return ("tensorboard" == self.vis) | ("viewer+tensorboard" == self.vis)
+        return (self.vis == "tensorboard") | (self.vis == "viewer+tensorboard")
 
     def is_comet_enabled(self) -> bool:
-        return ("comet" == self.vis) | ("viewer+comet" == self.vis)
+        return (self.vis == "comet") | (self.vis == "viewer+comet")
 
     def set_timestamp(self) -> None:
         """Dynamically set the experiment timestamp"""

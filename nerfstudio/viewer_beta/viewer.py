@@ -202,7 +202,7 @@ class Viewer:
         viewer_gui_folders = dict()
 
         def nested_folder_install(folder_labels: List[str], prev_labels: List[str], element: ViewerElement):
-            if len(folder_labels) == 0:
+            if not folder_labels:
                 element.install(self.viser_server)
                 # also rewire the hook to rerender
                 prev_cb = element.cb_hook
@@ -271,28 +271,26 @@ class Viewer:
         R = torch.tensor(R.as_matrix())
         pos = torch.tensor(client.camera.position, dtype=torch.float64) / VISER_NERFSTUDIO_SCALE_RATIO
         c2w = torch.concatenate([R, pos[:, None]], dim=1)
-        if self.ready and self.render_tab_state.preview_render:
-            camera_type = self.render_tab_state.preview_camera_type
-            camera_state = CameraState(
-                fov=self.render_tab_state.preview_fov,
-                aspect=self.render_tab_state.preview_aspect,
-                c2w=c2w,
-                camera_type=CameraType.PERSPECTIVE
-                if camera_type == "Perspective"
-                else CameraType.FISHEYE
-                if camera_type == "Fisheye"
-                else CameraType.EQUIRECTANGULAR
-                if camera_type == "Equirectangular"
-                else assert_never(camera_type),
-            )
-        else:
-            camera_state = CameraState(
+        if not self.ready or not self.render_tab_state.preview_render:
+            return CameraState(
                 fov=client.camera.fov,
                 aspect=client.camera.aspect,
                 c2w=c2w,
                 camera_type=CameraType.PERSPECTIVE,
             )
-        return camera_state
+        camera_type = self.render_tab_state.preview_camera_type
+        return CameraState(
+            fov=self.render_tab_state.preview_fov,
+            aspect=self.render_tab_state.preview_aspect,
+            c2w=c2w,
+            camera_type=CameraType.PERSPECTIVE
+            if camera_type == "Perspective"
+            else CameraType.FISHEYE
+            if camera_type == "Fisheye"
+            else CameraType.EQUIRECTANGULAR
+            if camera_type == "Equirectangular"
+            else assert_never(camera_type),
+        )
 
     def handle_disconnect(self, client: viser.ClientHandle) -> None:
         self.render_statemachines[client.client_id].running = False

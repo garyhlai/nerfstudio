@@ -194,7 +194,7 @@ class SDFField(Field):
 
             if self.config.weight_norm:
                 lin = nn.utils.weight_norm(lin)
-            setattr(self, "clin" + str(layer), lin)
+            setattr(self, f"clin{str(layer)}", lin)
 
         self.softplus = nn.Softplus(beta=100)
         self.relu = nn.ReLU()
@@ -246,7 +246,7 @@ class SDFField(Field):
 
             if self.config.weight_norm:
                 lin = nn.utils.weight_norm(lin)
-            setattr(self, "glin" + str(layer), lin)
+            setattr(self, f"glin{str(layer)}", lin)
 
     def set_cos_anneal_ratio(self, anneal: float) -> None:
         """Set the anneal value for the proposal network."""
@@ -271,7 +271,7 @@ class SDFField(Field):
         outputs = inputs
 
         for layer in range(0, self.num_layers - 1):
-            lin = getattr(self, "glin" + str(layer))
+            lin = getattr(self, f"glin{str(layer)}")
 
             if layer in self.skip_in:
                 outputs = torch.cat([outputs, inputs], 1) / np.sqrt(2)
@@ -337,9 +337,7 @@ class SDFField(Field):
         p = prev_cdf - next_cdf
         c = prev_cdf
 
-        alpha = ((p + 1e-5) / (c + 1e-5)).clip(0.0, 1.0)
-
-        return alpha
+        return ((p + 1e-5) / (c + 1e-5)).clip(0.0, 1.0)
 
     def get_density(self, ray_samples: RaySamples):
         raise NotImplementedError
@@ -361,15 +359,14 @@ class SDFField(Field):
             # set it to zero if don't use it
             if not self.config.use_appearance_embedding:
                 embedded_appearance = torch.zeros_like(embedded_appearance)
+        elif self.use_average_appearance_embedding:
+            embedded_appearance = torch.ones(
+                (*directions.shape[:-1], self.config.appearance_embedding_dim), device=directions.device
+            ) * self.embedding_appearance.mean(dim=0)
         else:
-            if self.use_average_appearance_embedding:
-                embedded_appearance = torch.ones(
-                    (*directions.shape[:-1], self.config.appearance_embedding_dim), device=directions.device
-                ) * self.embedding_appearance.mean(dim=0)
-            else:
-                embedded_appearance = torch.zeros(
-                    (*directions.shape[:-1], self.config.appearance_embedding_dim), device=directions.device
-                )
+            embedded_appearance = torch.zeros(
+                (*directions.shape[:-1], self.config.appearance_embedding_dim), device=directions.device
+            )
 
         hidden_input = torch.cat(
             [
@@ -383,16 +380,14 @@ class SDFField(Field):
         )
 
         for layer in range(0, self.num_layers_color - 1):
-            lin = getattr(self, "clin" + str(layer))
+            lin = getattr(self, f"clin{str(layer)}")
 
             hidden_input = lin(hidden_input)
 
             if layer < self.num_layers_color - 2:
                 hidden_input = self.relu(hidden_input)
 
-        rgb = self.sigmoid(hidden_input)
-
-        return rgb
+        return self.sigmoid(hidden_input)
 
     def get_outputs(
         self,
@@ -441,7 +436,7 @@ class SDFField(Field):
 
         if return_alphas:
             alphas = self.get_alpha(ray_samples, sdf, gradients)
-            outputs.update({FieldHeadNames.ALPHA: alphas})
+            outputs[FieldHeadNames.ALPHA] = alphas
 
         return outputs
 
@@ -455,5 +450,4 @@ class SDFField(Field):
             compute normals: not currently used in this implementation.
             return_alphas: Whether to return alpha values
         """
-        field_outputs = self.get_outputs(ray_samples, return_alphas=return_alphas)
-        return field_outputs
+        return self.get_outputs(ray_samples, return_alphas=return_alphas)

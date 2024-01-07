@@ -119,26 +119,24 @@ class MLP(FieldComponent):
         activation_str = activation_to_tcnn_string(activation)
         output_activation_str = activation_to_tcnn_string(out_activation)
         if layer_width in [16, 32, 64, 128]:
-            network_config = {
+            return {
                 "otype": "FullyFusedMLP",
                 "activation": activation_str,
                 "output_activation": output_activation_str,
                 "n_neurons": layer_width,
                 "n_hidden_layers": num_layers - 1,
             }
-        else:
-            CONSOLE.line()
-            CONSOLE.print("[bold yellow]WARNING: Using slower TCNN CutlassMLP instead of TCNN FullyFusedMLP")
-            CONSOLE.print("[bold yellow]Use layer width of 16, 32, 64, or 128 to use the faster TCNN FullyFusedMLP.")
-            CONSOLE.line()
-            network_config = {
-                "otype": "CutlassMLP",
-                "activation": activation_str,
-                "output_activation": output_activation_str,
-                "n_neurons": layer_width,
-                "n_hidden_layers": num_layers - 1,
-            }
-        return network_config
+        CONSOLE.line()
+        CONSOLE.print("[bold yellow]WARNING: Using slower TCNN CutlassMLP instead of TCNN FullyFusedMLP")
+        CONSOLE.print("[bold yellow]Use layer width of 16, 32, 64, or 128 to use the faster TCNN FullyFusedMLP.")
+        CONSOLE.line()
+        return {
+            "otype": "CutlassMLP",
+            "activation": activation_str,
+            "output_activation": output_activation_str,
+            "n_neurons": layer_width,
+            "n_hidden_layers": num_layers - 1,
+        }
 
     def build_nn_modules(self) -> None:
         """Initialize the torch version of the multi-layer perceptron."""
